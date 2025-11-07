@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            display: flex;
+            gap: 30px;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .gauge-container {
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .gauge-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .thermometer {
+            position: relative;
+            width: 60px;
+            height: 400px;
+            background: #e5e7eb;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .thermometer-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(to top, #10b981, #34d399, #6ee7b7);
+            transition: height 0.5s ease;
+            border-radius: 0 0 30px 30px;
+            height: 0%;
+        }
+        
+        .thermometer-fill.goal-reached {
+            background: linear-gradient(to top, #f59e0b, #fbbf24, #fcd34d);
+        }
+        
+        .gauge-markers {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .gauge-marker {
+            position: absolute;
+            right: -50px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+        }
+        
+        .gauge-marker::before {
+            content: '';
+            position: absolute;
+            right: 50px;
+            width: 10px;
+            height: 2px;
+            background: #9ca3af;
+        }
+        
+        .gauge-marker.goal {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+        
+        .gauge-marker.goal::before {
+            background: #f59e0b;
+            width: 15px;
+            height: 3px;
+        }
+        
+        .goal-label {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }
+        
+        .goal-label strong {
+            color: #f59e0b;
+            font-size: 16px;
+            display: block;
+            margin-top: 5px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        #startBtn {
+            background: #10b981;
+            color: white;
+        }
+        
+        #startBtn:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        #endBtn {
+            background: #ef4444;
+            color: white;
+        }
+        
+        #endBtn:hover:not(:disabled) {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stats h2 {
+            color: #374151;
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .total-time {
+            font-size: 32px;
+            font-weight: 700;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .entries {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .entry {
+            background: white;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .entry.start {
+            border-left-color: #10b981;
+        }
+        
+        .entry.end {
+            border-left-color: #ef4444;
+        }
+        
+        .entry-type {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+        
+        .entry.start .entry-type {
+            color: #10b981;
+        }
+        
+        .entry.end .entry-type {
+            color: #ef4444;
+        }
+        
+        .entry-time {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        
+        .status.running {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status.stopped {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .current-session {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .session-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .session-time {
+            font-size: 48px;
+            font-weight: 700;
+            color: #667eea;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .save-status {
+            text-align: center;
+            padding: 8px;
+            margin-top: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .save-status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .save-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h1>⏱️ Time Tracker (EST)</h1>
+            
+            <div class="current-session">
+                <div class="session-label">Current Session</div>
+                <div class="session-time" id="currentSession">00:00:00</div>
+            </div>
+            
+            <div id="status" class="status stopped">Ready to Start</div>
+            
+            <div class="button-group">
+                <button id="startBtn">Start</button>
+                <button id="endBtn" disabled>End</button>
+            </div>
+            
+            <div id="saveStatus" class="save-status" style="display: none;"></div>
+            
+            <div class="stats">
+                <h2>Total Time Tracked Today</h2>
+                <div class="total-time" id="totalTime">00:00:00</div>
+            </div>
+            
+            <div class="stats">
+                <h2>Session History</h2>
+                <div class="entries" id="entries">
+                    <p style="text-align: center; color: #9ca3af;">No entries yet</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="gauge-container">
+            <div class="gauge-title">Daily Goal</div>
+            <div class="thermometer">
+                <div class="thermometer-fill" id="thermometerFill"></div>
+                <div class="gauge-markers">
+                    <div class="gauge-marker goal" style="bottom: 100%; transform: translateY(50%);">5</div>
+                    <div class="gauge-marker" style="bottom: 80%; transform: translateY(50%);">4</div>
+                    <div class="gauge-marker" style="bottom: 60%; transform: translateY(50%);">3</div>
+                    <div class="gauge-marker" style="bottom: 40%; transform: translateY(50%);">2</div>
+                    <div class="gauge-marker" style="bottom: 20%; transform: translateY(50%);">1</div>
+                    <div class="gauge-marker" style="bottom: 0%; transform: translateY(50%);">0</div>
+                </div>
+            </div>
+            <div class="goal-label">
+                Progress
+                <strong id="goalProgress">0%</strong>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
