@@ -5,16 +5,23 @@ import os
 from datetime import datetime
 import pytz
 
-app = Flask(__name__, template_folder='Templates')
+app = Flask(__name__, template_folder='Templates', static_folder='static') # Added static_folder for script.js
 
 # Dropbox directory path
 DROPBOX_DIR = "/home/clarke/Dropbox"
-CSV_FILE = os.path.join(DROPBOX_DIR, "time_tracker.csv")
+# Removed fixed CSV_FILE variable
 
 # Use pytz for timezone handling
 EST_TZ = pytz.timezone('America/New_York')
 
-# Removed HTML_TEMPLATE variable
+# --- NEW HELPER FUNCTION ---
+def get_csv_file_path(dt_est):
+    """Generates the monthly CSV file path based on the EST datetime object."""
+    # Format: time_tracker_Nov_2025.csv
+    month_year_suffix = dt_est.strftime('%b_%Y')
+    file_name = f"time_tracker_{month_year_suffix}.csv"
+    return os.path.join(DROPBOX_DIR, file_name)
+# ---------------------------
 
 @app.route('/')
 def index():
@@ -24,13 +31,15 @@ def index():
 @app.route('/load_today', methods=['GET'])
 def load_today():
     try:
-        if not os.path.isfile(CSV_FILE):
-            return jsonify({'entries': []})
-        
-        # Get current EST date
+        # Get current EST date and file path
         now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
         now_est = now_utc.astimezone(EST_TZ)
         today_est = now_est.date()
+        CSV_FILE = get_csv_file_path(now_est) # Use the new function
+        
+        if not os.path.isfile(CSV_FILE):
+            return jsonify({'entries': []})
+        
         today_entries = []
         
         with open(CSV_FILE, 'r', newline='') as f:
@@ -88,6 +97,9 @@ def save_entry():
         # Convert to EST
         dt_est = dt_utc.astimezone(EST_TZ)
         
+        # Determine the correct monthly file path
+        CSV_FILE = get_csv_file_path(dt_est) # Use the new function
+        
         # Create CSV file with headers if it doesn't exist
         file_exists = os.path.isfile(CSV_FILE)
         
@@ -117,8 +129,10 @@ if __name__ == '__main__':
     if not os.path.exists(DROPBOX_DIR):
         print(f"Warning: Dropbox directory {DROPBOX_DIR} does not exist!")
     
+    # We can't print the *exact* CSV file name here anymore as it changes daily/monthly, 
+    # but we can print the pattern.
     print(f"Time Tracker Server Starting (EST timezone)...")
-    print(f"Saving to: {CSV_FILE}")
+    print(f"Saving to files like: {os.path.join(DROPBOX_DIR, 'time_tracker_Mon_YYYY.csv')}")
     print(f"Open your browser to: http://localhost:5000")
     
     app.run(debug=True, host='0.0.0.0', port=5000)
