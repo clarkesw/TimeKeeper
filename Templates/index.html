@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Time Tracker</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+    <link rel="icon" id="favicon" href="/static/favicon-stopped.png">
     <style>
         * {
             margin: 0;
@@ -207,6 +207,75 @@
             overflow-y: auto;
         }
         
+        .timeline {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .timeline-session {
+            background: white;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .timeline-session.active {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .session-number {
+            font-weight: 700;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .session-duration {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+        
+        .timeline-session.active .session-duration {
+            color: #10b981;
+        }
+        
+        .timeline-times {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        
+        .timeline-time {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .timeline-label {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        
+        .start-label {
+            color: #10b981;
+        }
+        
+        .end-label {
+            color: #ef4444;
+        }
+        
         .entry {
             background: white;
             padding: 12px 15px;
@@ -337,6 +406,13 @@
                 <h2>Session History</h2>
                 <div class="entries" id="entries">
                     <p style="text-align: center; color: #9ca3af;">No entries yet</p>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <h2>Complete Timeline</h2>
+                <div class="timeline" id="timeline">
+                    <p style="text-align: center; color: #9ca3af;">No sessions yet</p>
                 </div>
             </div>
         </div>

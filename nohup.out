@@ -1,0 +1,155 @@
+Starting Time Tracker Server...
+Server will be available at: http://localhost:5000
+Press Ctrl+C to stop the server
+
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+ * Serving Flask app "server" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 255-671-818
+127.0.0.1 - - [19/Nov/2025 12:42:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 12:42:28] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 12:42:39] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 12:42:47] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 13:44:52] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 15:13:39] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 15:29:55] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 15:49:45] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 15:57:25] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 16:21:26] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 16:23:52] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 16:23:52] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 16:31:37] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 17:44:07] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 18:39:58] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 18:39:58] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 18:47:14] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 19:13:27] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [19/Nov/2025 20:09:43] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 08:15:49] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 08:15:49] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 08:15:49] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 08:15:58] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 09:08:36] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 09:30:41] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 10:11:36] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 10:24:07] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 10:31:42] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 10:31:55] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 10:48:20] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 11:05:22] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 11:38:46] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 12:08:16] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 12:38:24] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 12:56:10] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 14:11:06] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 16:08:28] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 17:22:30] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 17:55:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 17:55:28] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 18:03:16] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 18:29:22] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 18:53:09] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [20/Nov/2025 19:43:27] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 09:22:13] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 09:22:13] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 09:22:14] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 09:41:20] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 10:23:33] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 10:57:38] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 10:59:32] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 10:59:32] "GET /load_today HTTP/1.1" 200 -
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+Starting Time Tracker Server...
+Server will be available at: http://localhost:5000
+Press Ctrl+C to stop the server
+
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+ * Serving Flask app "server" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 255-671-818
+127.0.0.1 - - [21/Nov/2025 11:08:29] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:08:29] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:08:32] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:08:32] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:15:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:15:02] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:15:10] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:15:15] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:15:15] "GET /load_today HTTP/1.1" 200 -
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+Starting Time Tracker Server...
+Server will be available at: http://localhost:5000
+Press Ctrl+C to stop the server
+
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+ * Serving Flask app "server" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 255-671-818
+127.0.0.1 - - [21/Nov/2025 11:16:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:16:20] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:16:25] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:16:25] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:16:38] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:22:01] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:22:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:22:28] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:22:34] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:22:46] "POST /save HTTP/1.1" 200 -
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+Starting Time Tracker Server...
+Server will be available at: http://localhost:5000
+Press Ctrl+C to stop the server
+
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+ * Serving Flask app "server" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 255-671-818
+127.0.0.1 - - [21/Nov/2025 11:24:56] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:24:56] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:25:16] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:25:26] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:28:46] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:28:47] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:44:02] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:44:02] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [21/Nov/2025 11:44:02] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [21/Nov/2025 11:44:02] "GET /static/favicon-running.png HTTP/1.1" 404 -
+127.0.0.1 - - [21/Nov/2025 11:44:09] "POST /save HTTP/1.1" 200 -

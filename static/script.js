@@ -6,6 +6,7 @@ let sessionInterval = null;
 const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
 const entriesDiv = document.getElementById('entries');
+const timelineDiv = document.getElementById('timeline');
 const totalTimeDiv = document.getElementById('totalTime');
 const statusDiv = document.getElementById('status');
 const saveStatusDiv = document.getElementById('saveStatus');
@@ -14,6 +15,18 @@ const thermometerFill = document.getElementById('thermometerFill');
 const goalProgress = document.getElementById('goalProgress');
 
 const GOAL_HOURS = 5;
+
+// Function to update favicon
+function updateFavicon(running) {
+    const favicon = document.getElementById('favicon');
+    if (favicon) {
+        if (running) {
+            favicon.href = '/static/favicon-running.png';
+        } else {
+            favicon.href = '/static/favicon-stopped.png';
+        }
+    }
+}
 
 // Load today's entries on page load
 async function loadTodayEntries() {
@@ -41,12 +54,18 @@ async function loadTodayEntries() {
                 // Start updating the session timer
                 sessionInterval = setInterval(updateSessionTime, 1000);
                 updateSessionTime();
+                updateFavicon(true);
+            } else {
+                updateFavicon(false);
             }
             
             updateDisplay();
+        } else {
+            updateFavicon(false);
         }
     } catch (error) {
         console.error('Error loading today entries:', error);
+        updateFavicon(false);
     }
 }
 
@@ -64,6 +83,9 @@ function updateSessionTime() {
         
         currentSessionDiv.textContent = 
             `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        // Also update the timeline to show current session duration
+        updateTimeline();
     }
 }
 
@@ -132,19 +154,24 @@ startBtn.addEventListener('click', async () => {
     // Start updating the session timer
     sessionInterval = setInterval(updateSessionTime, 1000);
     updateSessionTime();
+    updateFavicon(true);
     
     updateDisplay();
 });
 
 endBtn.addEventListener('click', async () => {
     const now = new Date();
+    
+    // Add END entry BEFORE changing state
     entries.push({
         type: 'END',
         timestamp: now
     });
     
+    // Save to server
     await saveEntry('END', now);
     
+    // Now update UI state
     isRunning = false;
     currentStartTime = null;
     startBtn.disabled = false;
@@ -158,14 +185,20 @@ endBtn.addEventListener('click', async () => {
         sessionInterval = null;
     }
     currentSessionDiv.textContent = '00:00:00';
+    updateFavicon(false);
     
+    // Update display to recalculate total time
     updateDisplay();
 });
 
 function updateDisplay() {
+    console.log('=== updateDisplay called ===');
+    console.log('Total entries:', entries.length);
+    
     // Update entries list
     if (entries.length === 0) {
         entriesDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No entries yet</p>';
+        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
     } else {
         entriesDiv.innerHTML = entries.map(entry => {
             const displayTime = entry.timestamp.toLocaleTimeString('en-US', {
@@ -181,30 +214,129 @@ function updateDisplay() {
                 </div>
             `;
         }).reverse().join('');
+        
+        // Build timeline with sessions
+        updateTimeline();
     }
     
     // Calculate total time - handle orphaned entries robustly
     let totalMs = 0;
     let currentStart = null;
     
+    console.log('Calculating total time...');
     for (let i = 0; i < entries.length; i++) {
+        console.log(`Entry ${i}: ${entries[i].type} at ${entries[i].timestamp}`);
         if (entries[i].type === 'START') {
             currentStart = entries[i].timestamp;
+            console.log('  -> Set currentStart');
         } else if (entries[i].type === 'END' && currentStart) {
-            totalMs += entries[i].timestamp - currentStart;
+            const duration = entries[i].timestamp - currentStart;
+            totalMs += duration;
+            console.log(`  -> Found END, duration: ${duration}ms, totalMs now: ${totalMs}ms`);
             currentStart = null;
+        } else if (entries[i].type === 'END' && !currentStart) {
+            console.log('  -> END without START (orphaned)');
         }
     }
+    
+    console.log('Final totalMs:', totalMs);
     
     // Format total time
     const hours = Math.floor(totalMs / 3600000);
     const minutes = Math.floor((totalMs % 3600000) / 60000);
     const seconds = Math.floor((totalMs % 60000) / 1000);
     
-    totalTimeDiv.textContent = 
-        `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    console.log('Setting totalTimeDiv.textContent to:', formattedTime);
+    
+    totalTimeDiv.textContent = formattedTime;
     
     // Update thermometer
     const totalHours = totalMs / 3600000;
     updateThermometer(totalHours);
+    console.log('=== updateDisplay complete ===');
+}
+
+function updateTimeline() {
+    // Check if timeline element exists
+    if (!timelineDiv) {
+        console.error('timelineDiv is null!');
+        return;
+    }
+    
+    const sessions = [];
+    let currentStart = null;
+    let sessionNumber = 1;
+    
+    // Build sessions from entries
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].type === 'START') {
+            currentStart = entries[i].timestamp;
+        } else if (entries[i].type === 'END' && currentStart) {
+            sessions.push({
+                number: sessionNumber++,
+                start: currentStart,
+                end: entries[i].timestamp,
+                duration: entries[i].timestamp - currentStart
+            });
+            currentStart = null;
+        }
+    }
+    
+    // Check if there's an active session
+    if (currentStart) {
+        sessions.push({
+            number: sessionNumber,
+            start: currentStart,
+            end: null,
+            duration: new Date() - currentStart,
+            active: true
+        });
+    }
+    
+    if (sessions.length === 0) {
+        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
+        return;
+    }
+    
+    // Display sessions in reverse order (most recent first)
+    timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
+        const startTime = session.start.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        const endTime = session.end ? session.end.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }) : 'In Progress';
+        
+        const hours = Math.floor(session.duration / 3600000);
+        const minutes = Math.floor((session.duration % 3600000) / 60000);
+        const seconds = Math.floor((session.duration % 60000) / 1000);
+        const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        return `
+            <div class="timeline-session ${session.active ? 'active' : ''}">
+                <div class="timeline-header">
+                    <span class="session-number">Session ${session.number}</span>
+                    <span class="session-duration">${durationStr}</span>
+                </div>
+                <div class="timeline-times">
+                    <div class="timeline-time">
+                        <span class="timeline-label start-label">Start:</span>
+                        <span>${startTime}</span>
+                    </div>
+                    <div class="timeline-time">
+                        <span class="timeline-label end-label">End:</span>
+                        <span>${endTime}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
