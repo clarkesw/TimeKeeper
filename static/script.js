@@ -5,7 +5,6 @@ let sessionInterval = null;
 
 const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
-const entriesDiv = document.getElementById('entries');
 const timelineDiv = document.getElementById('timeline');
 const totalTimeDiv = document.getElementById('totalTime');
 const statusDiv = document.getElementById('status');
@@ -30,19 +29,28 @@ function updateFavicon(running) {
 
 // Load today's entries on page load
 async function loadTodayEntries() {
+    console.log('=== loadTodayEntries called ===');
     try {
         const response = await fetch('/load_today');
         const data = await response.json();
+        console.log('Received data:', data);
         
         if (data.entries && data.entries.length > 0) {
             entries = data.entries.map(entry => ({
                 type: entry.type,
                 timestamp: new Date(entry.timestamp)
             }));
+            console.log('Loaded entries:', entries);
+            
+            // Update display first with all loaded entries
+            console.log('Calling updateDisplay()...');
+            updateDisplay();
             
             // Check if last entry was a START (meaning timer was running)
             const lastEntry = entries[entries.length - 1];
+            console.log('Last entry:', lastEntry);
             if (lastEntry.type === 'START') {
+                console.log('Timer was running, resuming...');
                 // Timer was running, resume it
                 currentStartTime = lastEntry.timestamp;
                 isRunning = true;
@@ -56,17 +64,18 @@ async function loadTodayEntries() {
                 updateSessionTime();
                 updateFavicon(true);
             } else {
+                console.log('Timer was stopped');
                 updateFavicon(false);
             }
-            
-            updateDisplay();
         } else {
+            console.log('No entries found');
             updateFavicon(false);
         }
     } catch (error) {
         console.error('Error loading today entries:', error);
         updateFavicon(false);
     }
+    console.log('=== loadTodayEntries complete ===');
 }
 
 // Call on page load
@@ -195,35 +204,10 @@ function updateDisplay() {
     console.log('=== updateDisplay called ===');
     console.log('Total entries:', entries.length);
     
-    // Update entries list
-    if (entries.length === 0) {
-        entriesDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No entries yet</p>';
-        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
-    } else {
-        entriesDiv.innerHTML = entries.map(entry => {
-            const displayTime = entry.timestamp.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            });
-            return `
-                <div class="entry ${entry.type.toLowerCase()}">
-                    <span class="entry-type">${entry.type}</span>
-                    <span class="entry-time">${displayTime}</span>
-                </div>
-            `;
-        }).reverse().join('');
-        
-        // Build timeline with sessions
-        updateTimeline();
-    }
-    
-    // Calculate total time - handle orphaned entries robustly
+    // Calculate total time
     let totalMs = 0;
     let currentStart = null;
     
-    console.log('Calculating total time...');
     for (let i = 0; i < entries.length; i++) {
         console.log(`Entry ${i}: ${entries[i].type} at ${entries[i].timestamp}`);
         if (entries[i].type === 'START') {
@@ -234,8 +218,6 @@ function updateDisplay() {
             totalMs += duration;
             console.log(`  -> Found END, duration: ${duration}ms, totalMs now: ${totalMs}ms`);
             currentStart = null;
-        } else if (entries[i].type === 'END' && !currentStart) {
-            console.log('  -> END without START (orphaned)');
         }
     }
     
@@ -248,17 +230,21 @@ function updateDisplay() {
     
     const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     console.log('Setting totalTimeDiv.textContent to:', formattedTime);
-    
     totalTimeDiv.textContent = formattedTime;
     
     // Update thermometer
     const totalHours = totalMs / 3600000;
+    console.log('Updating thermometer with hours:', totalHours);
     updateThermometer(totalHours);
+    
+    // Update timeline
+    console.log('Calling updateTimeline()...');
+    updateTimeline();
     console.log('=== updateDisplay complete ===');
 }
 
 function updateTimeline() {
-    // Check if timeline element exists
+    console.log('=== updateTimeline called ===');
     if (!timelineDiv) {
         console.error('timelineDiv is null!');
         return;
@@ -283,8 +269,12 @@ function updateTimeline() {
         }
     }
     
-    // Check if there's an active session
-    if (currentStart) {
+    console.log('Built sessions:', sessions);
+    console.log('isRunning:', isRunning);
+    
+    // Check if there's an active session (only when timer is running)
+    if (currentStart && isRunning) {
+        console.log('Adding active session');
         sessions.push({
             number: sessionNumber,
             start: currentStart,
@@ -295,9 +285,13 @@ function updateTimeline() {
     }
     
     if (sessions.length === 0) {
+        console.log('No sessions to display');
         timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
         return;
     }
+    
+    console.log('Rendering', sessions.length, 'sessions');
+    console.log('=== updateTimeline complete ===');
     
     // Display sessions in reverse order (most recent first)
     timelineDiv.innerHTML = sessions.slice().reverse().map(session => {

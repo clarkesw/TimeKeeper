@@ -153,3 +153,85 @@ Open your browser to: http://localhost:5000
 127.0.0.1 - - [21/Nov/2025 11:44:02] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
 127.0.0.1 - - [21/Nov/2025 11:44:02] "GET /static/favicon-running.png HTTP/1.1" 404 -
 127.0.0.1 - - [21/Nov/2025 11:44:09] "POST /save HTTP/1.1" 200 -
+Starting Time Tracker Server...
+Server will be available at: http://localhost:5000
+Press Ctrl+C to stop the server
+
+Time Tracker Server Starting (EST timezone)...
+Saving to files like: /home/clarke/Dropbox/time_tracker_Mon_YYYY.csv
+Open your browser to: http://localhost:5000
+ * Serving Flask app "server" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 255-671-818
+127.0.0.1 - - [22/Nov/2025 10:17:09] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:17:10] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:17:17] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:17:17] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:17:24] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:18:14] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:19:40] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:19:40] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:22:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:22:05] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:22:07] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:22:07] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:23:41] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:23:41] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:23:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:23:43] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:26:13] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:26:13] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:27:50] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:27:51] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:27:54] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:27:54] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:29:27] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:29:27] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:32:03] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:32:03] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:32:03] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:32:03] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 10:32:28] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:32:28] "GET /static/favicon-running.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 10:47:32] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 10:47:32] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 11:43:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 11:43:44] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 11:43:47] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 11:49:44] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 11:49:44] "GET /static/script.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 11:49:45] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 12:07:11] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 12:08:51] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 12:08:51] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 12:12:43] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 12:58:45] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:01:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:01:22] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:01:35] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:02:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:02:43] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:02:43] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 13:04:26] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:04:27] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:12:57] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:12:57] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:12:57] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 13:12:57] "GET /static/favicon-running.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 13:36:37] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 13:36:37] "GET /static/favicon-stopped.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 15:41:36] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 15:41:36] "GET /static/favicon-running.png HTTP/1.1" 404 -
+127.0.0.1 - - [22/Nov/2025 15:58:15] "POST /save HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 19:35:10] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [22/Nov/2025 19:35:10] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2025 10:03:21] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2025 10:03:21] "GET /static/script.js HTTP/1.1" 304 -
+127.0.0.1 - - [23/Nov/2025 10:03:21] "GET /load_today HTTP/1.1" 200 -
+127.0.0.1 - - [23/Nov/2025 10:03:28] "POST /save HTTP/1.1" 200 -
