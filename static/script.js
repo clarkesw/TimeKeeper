@@ -7,7 +7,6 @@ const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
 const timelineDiv = document.getElementById('timeline');
 const totalTimeDiv = document.getElementById('totalTime');
-const statusDiv = document.getElementById('status');
 const saveStatusDiv = document.getElementById('saveStatus');
 const currentSessionDiv = document.getElementById('currentSession');
 const thermometerFill = document.getElementById('thermometerFill');
@@ -42,13 +41,11 @@ async function loadTodayEntries() {
             }));
             console.log('Loaded entries:', entries);
             
-            // Update display first with all loaded entries
-            console.log('Calling updateDisplay()...');
-            updateDisplay();
-            
             // Check if last entry was a START (meaning timer was running)
             const lastEntry = entries[entries.length - 1];
             console.log('Last entry:', lastEntry);
+            console.log('Last entry type:', lastEntry.type);
+            
             if (lastEntry.type === 'START') {
                 console.log('Timer was running, resuming...');
                 // Timer was running, resume it
@@ -56,8 +53,12 @@ async function loadTodayEntries() {
                 isRunning = true;
                 startBtn.disabled = true;
                 endBtn.disabled = false;
-                statusDiv.textContent = 'Timer Running...';
-                statusDiv.className = 'status running';
+                
+                console.log('isRunning is now:', isRunning);
+                console.log('currentStartTime is now:', currentStartTime);
+                
+                // Update display AFTER setting state
+                updateDisplay();
                 
                 // Start updating the session timer
                 sessionInterval = setInterval(updateSessionTime, 1000);
@@ -65,6 +66,8 @@ async function loadTodayEntries() {
                 updateFavicon(true);
             } else {
                 console.log('Timer was stopped');
+                // Update display for stopped state
+                updateDisplay();
                 updateFavicon(false);
             }
         } else {
@@ -82,19 +85,25 @@ async function loadTodayEntries() {
 loadTodayEntries();
 
 function updateSessionTime() {
+    console.log('updateSessionTime called, currentStartTime:', currentStartTime);
     if (currentStartTime) {
         const now = new Date();
+        console.log('now:', now);
         const elapsed = now - currentStartTime;
+        console.log('elapsed ms:', elapsed);
         
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
         const seconds = Math.floor((elapsed % 60000) / 1000);
         
-        currentSessionDiv.textContent = 
-            `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        console.log('Setting currentSessionDiv to:', timeString);
+        currentSessionDiv.textContent = timeString;
         
         // Also update the timeline to show current session duration
         updateTimeline();
+    } else {
+        console.log('currentStartTime is null/undefined');
     }
 }
 
@@ -157,8 +166,6 @@ startBtn.addEventListener('click', async () => {
     isRunning = true;
     startBtn.disabled = true;
     endBtn.disabled = false;
-    statusDiv.textContent = 'Timer Running...';
-    statusDiv.className = 'status running';
     
     // Start updating the session timer
     sessionInterval = setInterval(updateSessionTime, 1000);
@@ -185,8 +192,6 @@ endBtn.addEventListener('click', async () => {
     currentStartTime = null;
     startBtn.disabled = false;
     endBtn.disabled = true;
-    statusDiv.textContent = 'Timer Stopped';
-    statusDiv.className = 'status stopped';
     
     // Stop updating the session timer
     if (sessionInterval) {
@@ -202,6 +207,8 @@ endBtn.addEventListener('click', async () => {
 
 function updateDisplay() {
     console.log('=== updateDisplay called ===');
+    console.log('isRunning:', isRunning);
+    console.log('currentStartTime:', currentStartTime);
     console.log('Total entries:', entries.length);
     
     // Calculate total time
@@ -245,6 +252,9 @@ function updateDisplay() {
 
 function updateTimeline() {
     console.log('=== updateTimeline called ===');
+    console.log('isRunning in updateTimeline:', isRunning);
+    console.log('currentStartTime in updateTimeline:', currentStartTime);
+    
     if (!timelineDiv) {
         console.error('timelineDiv is null!');
         return;
@@ -270,7 +280,7 @@ function updateTimeline() {
     }
     
     console.log('Built sessions:', sessions);
-    console.log('isRunning:', isRunning);
+    console.log('currentStart after building sessions:', currentStart);
     
     // Check if there's an active session (only when timer is running)
     if (currentStart && isRunning) {
@@ -282,6 +292,8 @@ function updateTimeline() {
             duration: new Date() - currentStart,
             active: true
         });
+    } else {
+        console.log('NOT adding active session. currentStart:', currentStart, 'isRunning:', isRunning);
     }
     
     if (sessions.length === 0) {
@@ -291,7 +303,6 @@ function updateTimeline() {
     }
     
     console.log('Rendering', sessions.length, 'sessions');
-    console.log('=== updateTimeline complete ===');
     
     // Display sessions in reverse order (most recent first)
     timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
@@ -333,4 +344,6 @@ function updateTimeline() {
             </div>
         `;
     }).join('');
+    
+    console.log('=== updateTimeline complete ===');
 }
