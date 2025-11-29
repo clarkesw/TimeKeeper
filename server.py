@@ -1,18 +1,36 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify # Changed import to render_template
+from flask import Flask, render_template, request, jsonify
 import csv
 import os
+import sys  # Import sys for platform check
 from datetime import datetime
 import pytz
 
-app = Flask(__name__, template_folder='Templates', static_folder='static') # Added static_folder for script.js
+app = Flask(__name__, template_folder='Templates', static_folder='static')
 
-# Dropbox directory path
-DROPBOX_DIR = "/home/clarke/Dropbox"
-# Removed fixed CSV_FILE variable
+# --- OPERATING SYSTEM AND DIRECTORY CHECK ---
+
+# Dropbox directory path definitions (Customize these for your specific user names/systems)
+# 'linux' is used for Linux and 'darwin' for macOS (which is close enough for this purpose)
+LINUX_DROPBOX_DIR = "/home/clarke/Dropbox"
+WINDOWS_DROPBOX_DIR = "C:\\Users\\clark\\Dropbox"
+
+# Determine the operating system and set the primary Dropbox directory
+if sys.platform.startswith('win'):
+    DROPBOX_DIR = WINDOWS_DROPBOX_DIR
+elif sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+    DROPBOX_DIR = LINUX_DROPBOX_DIR
+else:
+    # Fallback for unknown OS
+    print(f"Warning: Unknown operating system: {sys.platform}. Defaulting to Linux path.")
+    DROPBOX_DIR = LINUX_DROPBOX_DIR
+
+# --- END OS CHECK ---
+
 
 # Use pytz for timezone handling
 EST_TZ = pytz.timezone('America/New_York')
+
 
 # --- NEW HELPER FUNCTION ---
 def get_csv_file_path(dt_est):
@@ -21,12 +39,15 @@ def get_csv_file_path(dt_est):
     month_year_suffix = dt_est.strftime('%b_%Y')
     file_name = f"time_tracker_{month_year_suffix}.csv"
     return os.path.join(DROPBOX_DIR, file_name)
+
+
 # ---------------------------
 
 @app.route('/')
 def index():
     # Changed to render_template and specifies the file name
     return render_template('index.html')
+
 
 @app.route('/load_today', methods=['GET'])
 def load_today():
@@ -35,19 +56,19 @@ def load_today():
         now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
         now_est = now_utc.astimezone(EST_TZ)
         today_est = now_est.date()
-        CSV_FILE = get_csv_file_path(now_est) # Use the new function
-        
+        CSV_FILE = get_csv_file_path(now_est)  # Use the new function
+
         if not os.path.isfile(CSV_FILE):
             return jsonify({'entries': []})
-        
+
         today_entries = []
-        
+
         with open(CSV_FILE, 'r', newline='') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Parse the timestamp
                 timestamp_str = row['Timestamp']
-                
+
                 # Handle both old UTC format and new EST format
                 if timestamp_str.endswith('Z'):
                     # Old UTC format - convert to EST
@@ -67,7 +88,7 @@ def load_today():
                         # Fallback
                         dt_naive = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
                         dt_est = EST_TZ.localize(dt_naive)
-                
+
                 # Check if entry is from today in EST
                 if dt_est.date() == today_est:
                     # Return timestamp that JavaScript can parse
@@ -75,11 +96,12 @@ def load_today():
                         'type': row['Type'],
                         'timestamp': dt_est.isoformat()
                     })
-        
+
         return jsonify({'entries': today_entries})
-    
+
     except Exception as e:
         return jsonify({'entries': [], 'error': str(e)})
+
 
 @app.route('/save', methods=['POST'])
 def save_entry():
@@ -87,52 +109,54 @@ def save_entry():
         data = request.json
         entry_type = data['type']
         timestamp_iso = data['timestamp']
-        
+
         # Parse the timestamp from the client
         if timestamp_iso.endswith('Z'):
             dt_utc = datetime.strptime(timestamp_iso, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=pytz.utc)
         else:
             dt_utc = datetime.fromisoformat(timestamp_iso.replace('+00:00', '')).replace(tzinfo=pytz.utc)
-        
+
         # Convert to EST
         dt_est = dt_utc.astimezone(EST_TZ)
-        
+
         # Determine the correct monthly file path
-        CSV_FILE = get_csv_file_path(dt_est) # Use the new function
-        
+        CSV_FILE = get_csv_file_path(dt_est)  # Use the new function
+
         # Create CSV file with headers if it doesn't exist
         file_exists = os.path.isfile(CSV_FILE)
-        
+
         with open(CSV_FILE, 'a', newline='') as f:
             writer = csv.writer(f)
-            
+
             if not file_exists:
                 writer.writerow(['Type', 'Timestamp', 'Date', 'Time'])
-            
+
             # Store everything in EST (without timezone suffix for cleaner look)
             timestamp_clean = dt_est.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
-            
+
             writer.writerow([
                 entry_type,
                 timestamp_clean,
                 dt_est.strftime('%Y-%m-%d'),
                 dt_est.strftime('%H:%M:%S')
             ])
-        
+
         return jsonify({'success': True})
-    
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     # Ensure Dropbox directory exists
     if not os.path.exists(DROPBOX_DIR):
-        print(f"Warning: Dropbox directory {DROPBOX_DIR} does not exist!")
-    
-    # We can't print the *exact* CSV file name here anymore as it changes daily/monthly, 
-    # but we can print the pattern.
+        # We print DROPBOX_DIR here so the user can see which path was selected based on the OS check
+        print(f"Warning: Dropbox directory {DROPBOX_DIR} does not exist! Please check the path defined in the script.")
+
+    print(f"Operating System Detected: {sys.platform}")
+    print(f"Dropbox Base Directory Selected: {DROPBOX_DIR}")
     print(f"Time Tracker Server Starting (EST timezone)...")
     print(f"Saving to files like: {os.path.join(DROPBOX_DIR, 'time_tracker_Mon_YYYY.csv')}")
     print(f"Open your browser to: http://localhost:5000")
-    
+
     app.run(debug=True, host='0.0.0.0', port=5000)
