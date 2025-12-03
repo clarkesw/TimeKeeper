@@ -359,6 +359,42 @@
             background: #fee2e2;
             color: #991b1b;
         }
+        
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+        
+        .checklist-item input[type="checkbox"]:checked {
+            cursor: not-allowed;
+        }
+        
+        .checklist-item label {
+            font-size: 16px;
+            color: #374151;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .checklist-item input[type="checkbox"]:checked + label {
+            color: #9ca3af;
+            text-decoration: line-through;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -381,6 +417,28 @@
             <div class="stats">
                 <h2>Today's Total</h2>
                 <div class="total-time" id="totalTime">00:00:00</div>
+            </div>
+            
+            <div class="stats">
+                <h2>Daily Goals</h2>
+                <div class="checklist" id="checklist">
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check-java" data-task="Java Study">
+                        <label for="check-java">Java Study</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check-code" data-task="Code Practice">
+                        <label for="check-code">Code Practice</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check-business" data-task="Business Idea">
+                        <label for="check-business">Business Idea</label>
+                    </div>
+                    <div class="checklist-item">
+                        <input type="checkbox" id="check-church" data-task="Church Work">
+                        <label for="check-church">Church Work</label>
+                    </div>
+                </div>
             </div>
             
             <div class="stats">

@@ -26,6 +26,23 @@ function updateFavicon(running) {
     }
 }
 
+// Function to load checklist states from entries
+function loadChecklistStates() {
+    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    
+    // Find all CHECK entries for today
+    entries.forEach(entry => {
+        if (entry.type === 'CHECK' && entry.task) {
+            checkboxes.forEach(checkbox => {
+                if (checkbox.dataset.task === entry.task) {
+                    checkbox.checked = true;
+                    checkbox.disabled = true;
+                }
+            });
+        }
+    });
+}
+
 // Load today's entries on page load
 async function loadTodayEntries() {
     console.log('=== loadTodayEntries called ===');
@@ -37,9 +54,13 @@ async function loadTodayEntries() {
         if (data.entries && data.entries.length > 0) {
             entries = data.entries.map(entry => ({
                 type: entry.type,
-                timestamp: new Date(entry.timestamp)
+                timestamp: new Date(entry.timestamp),
+                task: entry.task || null
             }));
             console.log('Loaded entries:', entries);
+            
+            // Load checklist states
+            loadChecklistStates();
             
             // Check if last entry was a START (meaning timer was running)
             const lastEntry = entries[entries.length - 1];
@@ -83,6 +104,33 @@ async function loadTodayEntries() {
 
 // Call on page load
 loadTodayEntries();
+
+// Add event listeners to checkboxes
+document.addEventListener('DOMContentLoaded', () => {
+    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                const task = e.target.dataset.task;
+                const now = new Date();
+                
+                // Add CHECK entry
+                entries.push({
+                    type: 'CHECK',
+                    timestamp: now,
+                    task: task
+                });
+                
+                // Save to server
+                await saveEntry('CHECK', now, task);
+                
+                // Disable the checkbox so it can't be unchecked
+                e.target.disabled = true;
+            }
+        });
+    });
+});
 
 function updateSessionTime() {
     console.log('updateSessionTime called, currentStartTime:', currentStartTime);
@@ -129,26 +177,42 @@ function showSaveStatus(message, isSuccess) {
     }, 3000);
 }
 
-async function saveEntry(type, timestamp) {
+async function saveEntry(type, timestamp, task = null) {
     try {
+        const payload = {
+            type: type,
+            timestamp: timestamp.toISOString()
+        };
+        
+        if (task) {
+            payload.task = task;
+        }
+        
+        console.log('Saving entry:', payload);
+        
         const response = await fetch('/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                type: type,
-                timestamp: timestamp.toISOString()
-            })
+            body: JSON.stringify(payload)
         });
         
+        console.log('Response status:', response.status);
         const result = await response.json();
+        console.log('Response data:', result);
+        
         if (result.success) {
-            showSaveStatus('Saved to Dropbox!', true);
+            if (type === 'CHECK') {
+                showSaveStatus(`${task} marked complete!`, true);
+            } else {
+                showSaveStatus('Saved to Dropbox!', true);
+            }
         } else {
             showSaveStatus('Error saving: ' + result.error, false);
         }
     } catch (error) {
+        console.error('Save error:', error);
         showSaveStatus('Error: ' + error.message, false);
     }
 }

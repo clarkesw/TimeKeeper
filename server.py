@@ -1,162 +1,173 @@
-#!/usr/bin/env python3
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import csv
 import os
-import sys  # Import sys for platform check
 from datetime import datetime
 import pytz
 
-app = Flask(__name__, template_folder='Templates', static_folder='static')
+app = Flask(__name__)
 
-# --- OPERATING SYSTEM AND DIRECTORY CHECK ---
+EST = pytz.timezone('America/New_York')
 
-# Dropbox directory path definitions (Customize these for your specific user names/systems)
-# 'linux' is used for Linux and 'darwin' for macOS (which is close enough for this purpose)
-LINUX_DROPBOX_DIR = "/home/clarke/Dropbox"
-WINDOWS_DROPBOX_DIR = "C:\\Users\\clark\\Dropbox"
+def get_today_filename():
+    """Get filename for today's CSV"""
+    today = datetime.now(EST)
+    month_year = today.strftime('%b_%Y')  # e.g., Dec_2025
+    return f'/home/clarke/Dropbox/time_tracker_{month_year}.csv'
 
-# Determine the operating system and set the primary Dropbox directory
-if sys.platform.startswith('win'):
-    DROPBOX_DIR = WINDOWS_DROPBOX_DIR
-elif sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
-    DROPBOX_DIR = LINUX_DROPBOX_DIR
-else:
-    # Fallback for unknown OS
-    print(f"Warning: Unknown operating system: {sys.platform}. Defaulting to Linux path.")
-    DROPBOX_DIR = LINUX_DROPBOX_DIR
+def read_csv_from_file(filename):
+    """Read CSV file from local filesystem"""
+    try:
+        if os.path.exists(filename):
+            with open(filename, 'r', encoding='utf-8') as f:
+                return f.read()
+        return None
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return None
 
-# --- END OS CHECK ---
-
-
-# Use pytz for timezone handling
-EST_TZ = pytz.timezone('America/New_York')
-
-
-# --- NEW HELPER FUNCTION ---
-def get_csv_file_path(dt_est):
-    """Generates the monthly CSV file path based on the EST datetime object."""
-    # Format: time_tracker_Nov_2025.csv
-    month_year_suffix = dt_est.strftime('%b_%Y')
-    file_name = f"time_tracker_{month_year_suffix}.csv"
-    return os.path.join(DROPBOX_DIR, file_name)
-
-
-# ---------------------------
+def write_csv_to_file(filename, content):
+    """Write CSV content to local filesystem"""
+    try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"Successfully wrote to {filename}")
+        return True
+    except Exception as e:
+        print(f"Error writing file: {e}")
+        return False
 
 @app.route('/')
 def index():
-    # Changed to render_template and specifies the file name
+    """Serve the main page"""
     return render_template('index.html')
 
-
-@app.route('/load_today', methods=['GET'])
+@app.route('/load_today')
 def load_today():
-    try:
-        # Get current EST date and file path
-        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
-        now_est = now_utc.astimezone(EST_TZ)
-        today_est = now_est.date()
-        CSV_FILE = get_csv_file_path(now_est)  # Use the new function
-
-        if not os.path.isfile(CSV_FILE):
-            return jsonify({'entries': []})
-
-        today_entries = []
-
-        with open(CSV_FILE, 'r', newline='') as f:
-            reader = csv.DictReader(f)
+    """Load today's entries from CSV"""
+    filename = get_today_filename()
+    print(f"Loading from: {filename}")
+    content = read_csv_from_file(filename)
+    
+    # Get today's date in EST
+    today = datetime.now(EST).date()
+    print(f"Today's date: {today}")
+    
+    entries = []
+    
+    if content:
+        lines = content.strip().split('\n')
+        if len(lines) > 1:  # Has header + data
+            reader = csv.DictReader(lines)
             for row in reader:
-                # Parse the timestamp
-                timestamp_str = row['Timestamp']
-
-                # Handle both old UTC format and new EST format
-                if timestamp_str.endswith('Z'):
-                    # Old UTC format - convert to EST
-                    dt_utc = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=pytz.utc)
-                    dt_est = dt_utc.astimezone(EST_TZ)
-                else:
-                    # Try to parse as ISO format with timezone
+                # Parse the date from the CSV
+                entry_date_str = row.get('Date', '')
+                if entry_date_str:
                     try:
-                        # Remove timezone suffix and parse
-                        if '+' in timestamp_str or timestamp_str.count('-') > 2:
-                            dt_est = datetime.fromisoformat(timestamp_str).astimezone(EST_TZ)
-                        else:
-                            # Assume EST if no timezone
-                            dt_naive = datetime.fromisoformat(timestamp_str)
-                            dt_est = EST_TZ.localize(dt_naive)
-                    except:
-                        # Fallback
-                        dt_naive = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
-                        dt_est = EST_TZ.localize(dt_naive)
-
-                # Check if entry is from today in EST
-                if dt_est.date() == today_est:
-                    # Return timestamp that JavaScript can parse
-                    today_entries.append({
+                        entry_date = datetime.strptime(entry_date_str, '%Y-%m-%d').date()
+                        
+                        # Only include entries from today
+                        if entry_date != today:
+                            continue
+                            
+                    except ValueError:
+                        print(f"Could not parse date: {entry_date_str}")
+                        continue
+                
+                # Add START/END entries
+                if row['Type'] in ['START', 'END']:
+                    entries.append({
                         'type': row['Type'],
-                        'timestamp': dt_est.isoformat()
+                        'timestamp': row['Timestamp']
                     })
-
-        return jsonify({'entries': today_entries})
-
-    except Exception as e:
-        return jsonify({'entries': [], 'error': str(e)})
-
+                
+                # Check for completed tasks (any column with 'x')
+                for task in ['Java Study', 'Code Practice', 'Business Idea', 'Church Work']:
+                    if row.get(task, '').strip().lower() == 'x':
+                        entries.append({
+                            'type': 'CHECK',
+                            'timestamp': row['Timestamp'],
+                            'task': task
+                        })
+    
+    print(f"Loaded {len(entries)} entries for today")
+    return jsonify({'entries': entries})
 
 @app.route('/save', methods=['POST'])
-def save_entry():
+def save():
+    """Save a new entry to CSV"""
     try:
         data = request.json
         entry_type = data['type']
-        timestamp_iso = data['timestamp']
-
-        # Parse the timestamp from the client
-        if timestamp_iso.endswith('Z'):
-            dt_utc = datetime.strptime(timestamp_iso, '%Y-%m-%dT%H:%M:%S.%fZ').replace(tzinfo=pytz.utc)
+        timestamp_str = data['timestamp']
+        task = data.get('task')
+        
+        print(f"Received save request: type={entry_type}, task={task}")
+        
+        # Parse timestamp
+        timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+        timestamp_est = timestamp.astimezone(EST)
+        
+        filename = get_today_filename()
+        print(f"Saving to: {filename}")
+        content = read_csv_from_file(filename)
+        
+        # Read existing rows
+        rows = []
+        if content:
+            lines = content.strip().split('\n')
+            if len(lines) > 1:  # Has header + data
+                reader = csv.DictReader(lines)
+                rows = list(reader)
+        
+        # Prepare new row
+        new_row = {
+            'Type': entry_type,
+            'Timestamp': timestamp_str,
+            'Date': timestamp_est.strftime('%Y-%m-%d'),
+            'Time': timestamp_est.strftime('%H:%M:%S'),
+            'Java Study': '',
+            'Code Practice': '',
+            'Business Idea': '',
+            'Church Work': ''
+        }
+        
+        # If it's a CHECK entry, mark the task column with 'x'
+        if entry_type == 'CHECK' and task:
+            new_row[task] = 'x'
+            print(f"Marking task '{task}' with 'x'")
+        
+        rows.append(new_row)
+        
+        # Write back to CSV
+        output_lines = []
+        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Business Idea', 'Church Work']
+        
+        # Create CSV string
+        from io import StringIO
+        output = StringIO()
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+        
+        csv_content = output.getvalue()
+        print(f"Writing {len(rows)} rows to file")
+        print(f"CSV content preview:\n{csv_content[:500]}")
+        
+        success = write_csv_to_file(filename, csv_content)
+        
+        if success:
+            return jsonify({'success': True})
         else:
-            dt_utc = datetime.fromisoformat(timestamp_iso.replace('+00:00', '')).replace(tzinfo=pytz.utc)
-
-        # Convert to EST
-        dt_est = dt_utc.astimezone(EST_TZ)
-
-        # Determine the correct monthly file path
-        CSV_FILE = get_csv_file_path(dt_est)  # Use the new function
-
-        # Create CSV file with headers if it doesn't exist
-        file_exists = os.path.isfile(CSV_FILE)
-
-        with open(CSV_FILE, 'a', newline='') as f:
-            writer = csv.writer(f)
-
-            if not file_exists:
-                writer.writerow(['Type', 'Timestamp', 'Date', 'Time'])
-
-            # Store everything in EST (without timezone suffix for cleaner look)
-            timestamp_clean = dt_est.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
-
-            writer.writerow([
-                entry_type,
-                timestamp_clean,
-                dt_est.strftime('%Y-%m-%d'),
-                dt_est.strftime('%H:%M:%S')
-            ])
-
-        return jsonify({'success': True})
-
+            return jsonify({'success': False, 'error': 'Failed to write to file'}), 500
+            
     except Exception as e:
+        print(f"Error in save: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 if __name__ == '__main__':
-    # Ensure Dropbox directory exists
-    if not os.path.exists(DROPBOX_DIR):
-        # We print DROPBOX_DIR here so the user can see which path was selected based on the OS check
-        print(f"Warning: Dropbox directory {DROPBOX_DIR} does not exist! Please check the path defined in the script.")
-
-    print(f"Operating System Detected: {sys.platform}")
-    print(f"Dropbox Base Directory Selected: {DROPBOX_DIR}")
-    print(f"Time Tracker Server Starting (EST timezone)...")
-    print(f"Saving to files like: {os.path.join(DROPBOX_DIR, 'time_tracker_Mon_YYYY.csv')}")
-    print(f"Open your browser to: http://localhost:5000")
-
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
