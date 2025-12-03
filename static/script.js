@@ -2,6 +2,7 @@ let entries = [];
 let isRunning = false;
 let currentStartTime = null;
 let sessionInterval = null;
+let currentSessionTasks = new Set(); // Track tasks for current session
 
 const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
@@ -30,15 +31,25 @@ function updateFavicon(running) {
 function loadChecklistStates() {
     const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
     
-    // Find all CHECK entries for today
-    entries.forEach(entry => {
-        if (entry.type === 'CHECK' && entry.task) {
-            checkboxes.forEach(checkbox => {
-                if (checkbox.dataset.task === entry.task) {
-                    checkbox.checked = true;
-                    checkbox.disabled = true;
-                }
-            });
+    console.log('=== Loading checklist states ===');
+    console.log('isRunning:', isRunning);
+    
+    // Reset all checkboxes
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        checkbox.disabled = !isRunning; // Only enabled when timer is running
+    });
+    
+    console.log('=== Checklist loading complete ===');
+}
+
+// Function to enable/disable checkboxes based on timer state
+function updateCheckboxState(enabled) {
+    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.disabled = !enabled;
+        if (!enabled) {
+            checkbox.checked = false; // Reset when disabled
         }
     });
 }
@@ -58,9 +69,6 @@ async function loadTodayEntries() {
                 task: entry.task || null
             }));
             console.log('Loaded entries:', entries);
-            
-            // Load checklist states
-            loadChecklistStates();
             
             // Check if last entry was a START (meaning timer was running)
             const lastEntry = entries[entries.length - 1];
@@ -91,6 +99,9 @@ async function loadTodayEntries() {
                 updateDisplay();
                 updateFavicon(false);
             }
+            
+            // Load checklist states AFTER everything else
+            loadChecklistStates();
         } else {
             console.log('No entries found');
             updateFavicon(false);
@@ -102,32 +113,28 @@ async function loadTodayEntries() {
     console.log('=== loadTodayEntries complete ===');
 }
 
-// Call on page load
-loadTodayEntries();
+// Call on page load - wait for DOM to be ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadTodayEntries);
+} else {
+    loadTodayEntries();
+}
 
 // Add event listeners to checkboxes
 document.addEventListener('DOMContentLoaded', () => {
     const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
     
     checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', async (e) => {
+        checkbox.addEventListener('change', (e) => {
+            const task = e.target.dataset.task;
             if (e.target.checked) {
-                const task = e.target.dataset.task;
-                const now = new Date();
-                
-                // Add CHECK entry
-                entries.push({
-                    type: 'CHECK',
-                    timestamp: now,
-                    task: task
-                });
-                
-                // Save to server
-                await saveEntry('CHECK', now, task);
-                
-                // Disable the checkbox so it can't be unchecked
-                e.target.disabled = true;
+                currentSessionTasks.add(task);
+                console.log('Added task to session:', task);
+            } else {
+                currentSessionTasks.delete(task);
+                console.log('Removed task from session:', task);
             }
+            console.log('Current session tasks:', Array.from(currentSessionTasks));
         });
     });
 });
@@ -177,15 +184,15 @@ function showSaveStatus(message, isSuccess) {
     }, 3000);
 }
 
-async function saveEntry(type, timestamp, task = null) {
+async function saveEntry(type, timestamp, tasks = null) {
     try {
         const payload = {
             type: type,
             timestamp: timestamp.toISOString()
         };
         
-        if (task) {
-            payload.task = task;
+        if (tasks && tasks.length > 0) {
+            payload.tasks = tasks;
         }
         
         console.log('Saving entry:', payload);
@@ -203,11 +210,7 @@ async function saveEntry(type, timestamp, task = null) {
         console.log('Response data:', result);
         
         if (result.success) {
-            if (type === 'CHECK') {
-                showSaveStatus(`${task} marked complete!`, true);
-            } else {
-                showSaveStatus('Saved to Dropbox!', true);
-            }
+            showSaveStatus('Saved to Dropbox!', true);
         } else {
             showSaveStatus('Error saving: ' + result.error, false);
         }
@@ -220,6 +223,8 @@ async function saveEntry(type, timestamp, task = null) {
 startBtn.addEventListener('click', async () => {
     const now = new Date();
     currentStartTime = now;
+    currentSessionTasks.clear(); // Clear tasks for new session
+    
     entries.push({
         type: 'START',
         timestamp: now
@@ -230,6 +235,9 @@ startBtn.addEventListener('click', async () => {
     isRunning = true;
     startBtn.disabled = true;
     endBtn.disabled = false;
+    
+    // Enable checkboxes
+    updateCheckboxState(true);
     
     // Start updating the session timer
     sessionInterval = setInterval(updateSessionTime, 1000);
@@ -242,20 +250,29 @@ startBtn.addEventListener('click', async () => {
 endBtn.addEventListener('click', async () => {
     const now = new Date();
     
+    // Get the tasks that were checked during this session
+    const tasksArray = Array.from(currentSessionTasks);
+    console.log('Ending session with tasks:', tasksArray);
+    
     // Add END entry BEFORE changing state
     entries.push({
         type: 'END',
-        timestamp: now
+        timestamp: now,
+        tasks: tasksArray
     });
     
-    // Save to server
-    await saveEntry('END', now);
+    // Save to server with tasks
+    await saveEntry('END', now, tasksArray);
     
     // Now update UI state
     isRunning = false;
     currentStartTime = null;
+    currentSessionTasks.clear();
     startBtn.disabled = false;
     endBtn.disabled = true;
+    
+    // Disable and reset checkboxes
+    updateCheckboxState(false);
     
     // Stop updating the session timer
     if (sessionInterval) {
@@ -282,13 +299,22 @@ function updateDisplay() {
     for (let i = 0; i < entries.length; i++) {
         console.log(`Entry ${i}: ${entries[i].type} at ${entries[i].timestamp}`);
         if (entries[i].type === 'START') {
+            // If there's already a currentStart, this means we have two STARTs in a row
+            // Use the most recent START
+            if (currentStart) {
+                console.log('  -> WARNING: Found START while already started, using new START time');
+            }
             currentStart = entries[i].timestamp;
             console.log('  -> Set currentStart');
-        } else if (entries[i].type === 'END' && currentStart) {
-            const duration = entries[i].timestamp - currentStart;
-            totalMs += duration;
-            console.log(`  -> Found END, duration: ${duration}ms, totalMs now: ${totalMs}ms`);
-            currentStart = null;
+        } else if (entries[i].type === 'END') {
+            if (currentStart) {
+                const duration = entries[i].timestamp - currentStart;
+                totalMs += duration;
+                console.log(`  -> Found END, duration: ${duration}ms, totalMs now: ${totalMs}ms`);
+                currentStart = null;
+            } else {
+                console.log('  -> WARNING: Found END without START, ignoring');
+            }
         }
     }
     

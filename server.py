@@ -76,21 +76,12 @@ def load_today():
                         print(f"Could not parse date: {entry_date_str}")
                         continue
                 
-                # Add START/END entries
+                # Add START/END entries (no more CHECK entries)
                 if row['Type'] in ['START', 'END']:
                     entries.append({
                         'type': row['Type'],
                         'timestamp': row['Timestamp']
                     })
-                
-                # Check for completed tasks (any column with 'x')
-                for task in ['Java Study', 'Code Practice', 'Business Idea', 'Church Work']:
-                    if row.get(task, '').strip().lower() == 'x':
-                        entries.append({
-                            'type': 'CHECK',
-                            'timestamp': row['Timestamp'],
-                            'task': task
-                        })
     
     print(f"Loaded {len(entries)} entries for today")
     return jsonify({'entries': entries})
@@ -102,9 +93,9 @@ def save():
         data = request.json
         entry_type = data['type']
         timestamp_str = data['timestamp']
-        task = data.get('task')
+        tasks = data.get('tasks', [])  # Get tasks array (for END entries)
         
-        print(f"Received save request: type={entry_type}, task={task}")
+        print(f"Received save request: type={entry_type}, tasks={tasks}")
         
         # Parse timestamp
         timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
@@ -114,18 +105,33 @@ def save():
         print(f"Saving to: {filename}")
         content = read_csv_from_file(filename)
         
+        # Define the new fieldnames with task columns
+        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Business Idea', 'Church Work']
+        
         # Read existing rows
         rows = []
         if content:
             lines = content.strip().split('\n')
             if len(lines) > 1:  # Has header + data
                 reader = csv.DictReader(lines)
-                rows = list(reader)
+                # Convert existing rows to include new columns
+                for row in reader:
+                    new_row = {
+                        'Type': row.get('Type', ''),
+                        'Timestamp': row.get('Timestamp', ''),
+                        'Date': row.get('Date', ''),
+                        'Time': row.get('Time', ''),
+                        'Java Study': row.get('Java Study', ''),
+                        'Code Practice': row.get('Code Practice', ''),
+                        'Business Idea': row.get('Business Idea', ''),
+                        'Church Work': row.get('Church Work', '')
+                    }
+                    rows.append(new_row)
         
         # Prepare new row
         new_row = {
             'Type': entry_type,
-            'Timestamp': timestamp_str,
+            'Timestamp': timestamp_est.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3],  # EST time without Z
             'Date': timestamp_est.strftime('%Y-%m-%d'),
             'Time': timestamp_est.strftime('%H:%M:%S'),
             'Java Study': '',
@@ -134,18 +140,20 @@ def save():
             'Church Work': ''
         }
         
-        # If it's a CHECK entry, mark the task column with 'x'
-        if entry_type == 'CHECK' and task:
-            new_row[task] = 'x'
-            print(f"Marking task '{task}' with 'x'")
+        # If it's an END entry with tasks, mark the task columns with 'x'
+        if entry_type == 'END' and tasks:
+            print(f"Processing END entry with tasks: {tasks}")
+            for task in tasks:
+                print(f"Checking task: '{task}'")
+                if task in fieldnames:  # Make sure task name matches a column
+                    new_row[task] = 'x'
+                    print(f"✓ Marked task '{task}' with 'x' on END entry")
+                else:
+                    print(f"✗ Task '{task}' not found in columns: {fieldnames}")
         
         rows.append(new_row)
         
-        # Write back to CSV
-        output_lines = []
-        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Business Idea', 'Church Work']
-        
-        # Create CSV string
+        # Write back to CSV with all columns
         from io import StringIO
         output = StringIO()
         writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -154,7 +162,6 @@ def save():
         
         csv_content = output.getvalue()
         print(f"Writing {len(rows)} rows to file")
-        print(f"CSV content preview:\n{csv_content[:500]}")
         
         success = write_csv_to_file(filename, csv_content)
         
