@@ -59,9 +59,17 @@ def load_today():
     
     if content:
         lines = content.strip().split('\n')
+        print(f"Total lines in CSV: {len(lines)}")
         if len(lines) > 1:  # Has header + data
+            # Print the header to see column names
+            header_line = lines[0]
+            print(f"CSV Header: {header_line}")
+            
             reader = csv.DictReader(lines)
-            for row in reader:
+            for idx, row in enumerate(reader):
+                print(f"\n--- Row {idx} ---")
+                print(f"Full row: {dict(row)}")
+                
                 # Parse the date from the CSV
                 entry_date_str = row.get('Date', '')
                 if entry_date_str:
@@ -70,21 +78,46 @@ def load_today():
                         
                         # Only include entries from today
                         if entry_date != today:
+                            print(f"  Skipping - not today's date")
                             continue
                             
                     except ValueError:
                         print(f"Could not parse date: {entry_date_str}")
                         continue
                 
-                # Add START/END entries (no more CHECK entries)
+                # Add START/END entries with tasks
                 if row['Type'] in ['START', 'END']:
-                    entries.append({
+                    entry = {
                         'type': row['Type'],
                         'timestamp': row['Timestamp']
-                    })
+                    }
+                    
+                    # For END entries, collect which tasks were marked
+                    if row['Type'] == 'END':
+                        tasks = []
+                        task_columns = ['Java Study', 'Code Practice', 'Business Idea', 'Church Work']
+                        for task in task_columns:
+                            task_value = row.get(task, '').strip()
+                            print(f"  Checking task '{task}': value='{task_value}'")
+                            if task_value.lower() == 'x':
+                                tasks.append(task)
+                                print(f"    -> Added task '{task}' to list")
+                        # Always include tasks array for END entries, even if empty
+                        entry['tasks'] = tasks
+                        if tasks:
+                            print(f"Loaded END entry with tasks: {tasks}")
+                        else:
+                            print(f"Loaded END entry with NO tasks")
+                    
+                    print(f"Adding entry to list: {entry}")
+                    entries.append(entry)
     
+    print(f"\nFinal entries list: {entries}")
     print(f"Loaded {len(entries)} entries for today")
-    return jsonify({'entries': entries})
+    
+    result = {'entries': entries}
+    print(f"About to return JSON: {result}")
+    return jsonify(result)
 
 @app.route('/save', methods=['POST'])
 def save():

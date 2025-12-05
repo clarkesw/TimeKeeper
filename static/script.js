@@ -34,10 +34,29 @@ function loadChecklistStates() {
     console.log('=== Loading checklist states ===');
     console.log('isRunning:', isRunning);
     
-    // Reset all checkboxes
+    // Find all tasks that have been completed today (from CSV entries)
+    const completedTasks = new Set();
+    
+    entries.forEach(entry => {
+        if (entry.type === 'END' && entry.tasks && Array.isArray(entry.tasks)) {
+            entry.tasks.forEach(task => completedTasks.add(task));
+        }
+    });
+    
+    console.log('Completed tasks from CSV:', Array.from(completedTasks));
+    
+    // Update checkboxes based on completed tasks
     checkboxes.forEach(checkbox => {
-        checkbox.checked = false;
-        checkbox.disabled = !isRunning; // Only enabled when timer is running
+        const task = checkbox.dataset.task;
+        const isCompleted = completedTasks.has(task);
+        
+        checkbox.checked = isCompleted;
+        
+        // If completed, permanently disable
+        // If not completed, enable only when timer is running
+        checkbox.disabled = isCompleted || !isRunning;
+        
+        console.log(`Task "${task}": completed=${isCompleted}, disabled=${checkbox.disabled}`);
     });
     
     console.log('=== Checklist loading complete ===');
@@ -47,9 +66,16 @@ function loadChecklistStates() {
 function updateCheckboxState(enabled) {
     const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
     checkboxes.forEach(checkbox => {
-        checkbox.disabled = !enabled;
-        if (!enabled) {
-            checkbox.checked = false; // Reset when disabled
+        // Don't enable if already checked (permanently completed for the day)
+        if (checkbox.checked) {
+            checkbox.disabled = true;
+        } else {
+            checkbox.disabled = !enabled;
+        }
+        
+        if (!enabled && !checkbox.checked) {
+            // Only reset unchecked items when timer stops
+            checkbox.checked = false;
         }
     });
 }
@@ -63,11 +89,20 @@ async function loadTodayEntries() {
         console.log('Received data:', data);
         
         if (data.entries && data.entries.length > 0) {
-            entries = data.entries.map(entry => ({
-                type: entry.type,
-                timestamp: new Date(entry.timestamp),
-                task: entry.task || null
-            }));
+            entries = data.entries.map(entry => {
+                const mappedEntry = {
+                    type: entry.type,
+                    timestamp: new Date(entry.timestamp)
+                };
+                
+                // Only add tasks property for END entries
+                if (entry.type === 'END' && entry.tasks) {
+                    mappedEntry.tasks = entry.tasks;
+                    console.log('Mapped END entry with tasks:', entry.tasks);
+                }
+                
+                return mappedEntry;
+            });
             console.log('Loaded entries:', entries);
             
             // Check if last entry was a START (meaning timer was running)
@@ -130,7 +165,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.target.checked) {
                 currentSessionTasks.add(task);
                 console.log('Added task to session:', task);
+                // Once checked, immediately disable it
+                e.target.disabled = true;
             } else {
+                // This shouldn't happen since we disable on check, but just in case
                 currentSessionTasks.delete(task);
                 console.log('Removed task from session:', task);
             }
