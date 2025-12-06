@@ -95,7 +95,7 @@ def load_today():
                     # For END entries, collect which tasks were marked
                     if row['Type'] == 'END':
                         tasks = []
-                        task_columns = ['Java Study', 'Code Practice', 'Business Idea', 'Church Work']
+                        task_columns = ['Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work']
                         for task in task_columns:
                             task_value = row.get(task, '').strip()
                             print(f"  Checking task '{task}': value='{task_value}'")
@@ -138,8 +138,8 @@ def save():
         print(f"Saving to: {filename}")
         content = read_csv_from_file(filename)
         
-        # Define the new fieldnames with task columns
-        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Business Idea', 'Church Work']
+        # Define the new fieldnames with task columns (including Interview Ques.)
+        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work']
         
         # Read existing rows
         rows = []
@@ -156,6 +156,7 @@ def save():
                         'Time': row.get('Time', ''),
                         'Java Study': row.get('Java Study', ''),
                         'Code Practice': row.get('Code Practice', ''),
+                        'Interview Ques.': row.get('Interview Ques.', ''),
                         'Business Idea': row.get('Business Idea', ''),
                         'Church Work': row.get('Church Work', '')
                     }
@@ -169,6 +170,7 @@ def save():
             'Time': timestamp_est.strftime('%H:%M:%S'),
             'Java Study': '',
             'Code Practice': '',
+            'Interview Ques.': '',
             'Business Idea': '',
             'Church Work': ''
         }

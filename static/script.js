@@ -33,17 +33,19 @@ function loadChecklistStates() {
     
     console.log('=== Loading checklist states ===');
     console.log('isRunning:', isRunning);
+    console.log('Total entries loaded:', entries.length);
     
-    // Find all tasks that have been completed today (from CSV entries)
+    // Find all tasks that have been completed today (from entries array which only contains today's data)
     const completedTasks = new Set();
     
     entries.forEach(entry => {
         if (entry.type === 'END' && entry.tasks && Array.isArray(entry.tasks)) {
             entry.tasks.forEach(task => completedTasks.add(task));
+            console.log('Found END entry with tasks:', entry.tasks);
         }
     });
     
-    console.log('Completed tasks from CSV:', Array.from(completedTasks));
+    console.log('Completed tasks from today only:', Array.from(completedTasks));
     
     // Update checkboxes based on completed tasks
     checkboxes.forEach(checkbox => {
@@ -86,7 +88,8 @@ async function loadTodayEntries() {
     try {
         const response = await fetch('/load_today');
         const data = await response.json();
-        console.log('Received data:', data);
+        console.log('Received data from server:', data);
+        console.log('Number of entries received:', data.entries ? data.entries.length : 0);
         
         if (data.entries && data.entries.length > 0) {
             entries = data.entries.map(entry => {
@@ -103,7 +106,7 @@ async function loadTodayEntries() {
                 
                 return mappedEntry;
             });
-            console.log('Loaded entries:', entries);
+            console.log('Loaded entries into memory:', entries);
             
             // Check if last entry was a START (meaning timer was running)
             const lastEntry = entries[entries.length - 1];
@@ -138,8 +141,11 @@ async function loadTodayEntries() {
             // Load checklist states AFTER everything else
             loadChecklistStates();
         } else {
-            console.log('No entries found');
+            console.log('No entries found for today');
+            entries = []; // Make sure entries is empty
             updateFavicon(false);
+            // Still load checklist states to ensure everything is in default state
+            loadChecklistStates();
         }
     } catch (error) {
         console.error('Error loading today entries:', error);
@@ -379,99 +385,99 @@ function updateDisplay() {
 }
 
 function updateTimeline() {
-    console.log('=== updateTimeline called ===');
-    console.log('isRunning in updateTimeline:', isRunning);
-    console.log('currentStartTime in updateTimeline:', currentStartTime);
-    
-    if (!timelineDiv) {
-        console.error('timelineDiv is null!');
-        return;
-    }
-    
-    const sessions = [];
-    let currentStart = null;
-    let sessionNumber = 1;
-    
-    // Build sessions from entries
-    for (let i = 0; i < entries.length; i++) {
-        if (entries[i].type === 'START') {
-            currentStart = entries[i].timestamp;
-        } else if (entries[i].type === 'END' && currentStart) {
-            sessions.push({
-                number: sessionNumber++,
-                start: currentStart,
-                end: entries[i].timestamp,
-                duration: entries[i].timestamp - currentStart
-            });
-            currentStart = null;
-        }
-    }
-    
-    console.log('Built sessions:', sessions);
-    console.log('currentStart after building sessions:', currentStart);
-    
-    // Check if there's an active session (only when timer is running)
-    if (currentStart && isRunning) {
-        console.log('Adding active session');
-        sessions.push({
-            number: sessionNumber,
-            start: currentStart,
-            end: null,
-            duration: new Date() - currentStart,
-            active: true
-        });
-    } else {
-        console.log('NOT adding active session. currentStart:', currentStart, 'isRunning:', isRunning);
-    }
-    
-    if (sessions.length === 0) {
-        console.log('No sessions to display');
-        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
-        return;
-    }
-    
-    console.log('Rendering', sessions.length, 'sessions');
-    
-    // Display sessions in reverse order (most recent first)
-    timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
-        const startTime = session.start.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
-        
-        const endTime = session.end ? session.end.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        }) : 'In Progress';
-        
-        const hours = Math.floor(session.duration / 3600000);
-        const minutes = Math.floor((session.duration % 3600000) / 60000);
-        const seconds = Math.floor((session.duration % 60000) / 1000);
-        const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        
-        return `
-            <div class="timeline-session ${session.active ? 'active' : ''}">
-                <div class="timeline-header">
-                    <span class="session-number">Session ${session.number}</span>
-                    <span class="session-duration">${durationStr}</span>
-                </div>
-                <div class="timeline-times">
-                    <div class="timeline-time">
-                        <span class="timeline-label start-label">Start:</span>
-                        <span>${startTime}</span>
-                    </div>
-                    <div class="timeline-time">
-                        <span class="timeline-label end-label">End:</span>
-                        <span>${endTime}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    console.log('=== updateTimeline complete ===');
+    // console.log('=== updateTimeline called ===');
+    // console.log('isRunning in updateTimeline:', isRunning);
+    // console.log('currentStartTime in updateTimeline:', currentStartTime);
+    
+    if (!timelineDiv) {
+        // console.error('timelineDiv is null!');
+        return;
+    }
+    
+    const sessions = [];
+    let currentStart = null;
+    let sessionNumber = 1;
+    
+    // Build sessions from entries
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].type === 'START') {
+            currentStart = entries[i].timestamp;
+        } else if (entries[i].type === 'END' && currentStart) {
+            sessions.push({
+                number: sessionNumber++,
+                start: currentStart,
+                end: entries[i].timestamp,
+                duration: entries[i].timestamp - currentStart
+            });
+            currentStart = null;
+        }
+    }
+    
+    // console.log('Built sessions:', sessions);
+    // console.log('currentStart after building sessions:', currentStart);
+    
+    // Check if there's an active session (only when timer is running)
+    if (currentStart && isRunning) {
+        // console.log('Adding active session');
+        sessions.push({
+            number: sessionNumber,
+            start: currentStart,
+            end: null,
+            duration: new Date() - currentStart,
+            active: true
+        });
+    } else {
+        // console.log('NOT adding active session. currentStart:', currentStart, 'isRunning:', isRunning);
+    }
+    
+    if (sessions.length === 0) {
+        // console.log('No sessions to display');
+        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
+        return;
+    }
+    
+    // console.log('Rendering', sessions.length, 'sessions');
+    
+    // Display sessions in reverse order (most recent first)
+    timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
+        const startTime = session.start.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        const endTime = session.end ? session.end.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }) : 'In Progress';
+        
+        const hours = Math.floor(session.duration / 3600000);
+        const minutes = Math.floor((session.duration % 3600000) / 60000);
+        const seconds = Math.floor((session.duration % 60000) / 1000);
+        const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        return `
+            <div class="timeline-session ${session.active ? 'active' : ''}">
+                <div class="timeline-header">
+                    <span class="session-number">Session ${session.number}</span>
+                    <span class="session-duration">${durationStr}</span>
+                </div>
+                <div class="timeline-times">
+                    <div class="timeline-time">
+                        <span class="timeline-label start-label">Start:</span>
+                        <span>${startTime}</span>
+                    </div>
+                    <div class="timeline-time">
+                        <span class="timeline-label end-label">End:</span>
+                        <span>${endTime}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // console.log('=== updateTimeline complete ===');
 }
