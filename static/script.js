@@ -12,6 +12,7 @@ const saveStatusDiv = document.getElementById('saveStatus');
 const currentSessionDiv = document.getElementById('currentSession');
 const thermometerFill = document.getElementById('thermometerFill');
 const goalProgress = document.getElementById('goalProgress');
+const notesTextarea = document.getElementById('notesText');
 
 const GOAL_HOURS = 5;
 
@@ -61,6 +62,16 @@ function loadChecklistStates() {
         console.log(`Task "${task}": completed=${isCompleted}, disabled=${checkbox.disabled}`);
     });
     
+    // Clear the notes textarea at the start of each new day
+    if (notesTextarea) {
+        notesTextarea.value = '';
+        const notesCounter = document.getElementById('notesCounter');
+        if (notesCounter) {
+            notesCounter.textContent = '0';
+        }
+        console.log('Cleared notes textarea for new day');
+    }
+    
     console.log('=== Checklist loading complete ===');
 }
 
@@ -102,6 +113,12 @@ async function loadTodayEntries() {
                 if (entry.type === 'END' && entry.tasks) {
                     mappedEntry.tasks = entry.tasks;
                     console.log('Mapped END entry with tasks:', entry.tasks);
+                }
+                
+                // Add note property if present
+                if (entry.note) {
+                    mappedEntry.note = entry.note;
+                    console.log('Mapped entry with note:', entry.note);
                 }
                 
                 return mappedEntry;
@@ -181,28 +198,30 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Current session tasks:', Array.from(currentSessionTasks));
         });
     });
+    
+    // Add character counter for notes
+    const notesCounter = document.getElementById('notesCounter');
+    if (notesTextarea && notesCounter) {
+        notesTextarea.addEventListener('input', () => {
+            notesCounter.textContent = notesTextarea.value.length;
+        });
+    }
 });
 
 function updateSessionTime() {
-    console.log('updateSessionTime called, currentStartTime:', currentStartTime);
     if (currentStartTime) {
         const now = new Date();
-        console.log('now:', now);
         const elapsed = now - currentStartTime;
-        console.log('elapsed ms:', elapsed);
         
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
         const seconds = Math.floor((elapsed % 60000) / 1000);
         
         const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        console.log('Setting currentSessionDiv to:', timeString);
         currentSessionDiv.textContent = timeString;
         
         // Also update the timeline to show current session duration
         updateTimeline();
-    } else {
-        console.log('currentStartTime is null/undefined');
     }
 }
 
@@ -228,7 +247,7 @@ function showSaveStatus(message, isSuccess) {
     }, 3000);
 }
 
-async function saveEntry(type, timestamp, tasks = null) {
+async function saveEntry(type, timestamp, tasks = null, note = null) {
     try {
         const payload = {
             type: type,
@@ -237,6 +256,10 @@ async function saveEntry(type, timestamp, tasks = null) {
         
         if (tasks && tasks.length > 0) {
             payload.tasks = tasks;
+        }
+        
+        if (note) {
+            payload.note = note;
         }
         
         console.log('Saving entry:', payload);
@@ -262,6 +285,27 @@ async function saveEntry(type, timestamp, tasks = null) {
         console.error('Save error:', error);
         showSaveStatus('Error: ' + error.message, false);
     }
+}
+
+function checkForDuplicateNote(newNote) {
+    // Check if any existing entry today has the same note
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].note && entries[i].note === newNote) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function findNoteToReplace(newNote) {
+    // Check if the new note starts with any existing note
+    // If so, we'll replace that entry's note
+    for (let i = entries.length - 1; i >= 0; i--) {
+        if (entries[i].note && newNote.startsWith(entries[i].note)) {
+            return i;
+        }
+    }
+    return -1;
 }
 
 startBtn.addEventListener('click', async () => {
@@ -298,15 +342,41 @@ endBtn.addEventListener('click', async () => {
     const tasksArray = Array.from(currentSessionTasks);
     console.log('Ending session with tasks:', tasksArray);
     
+    // Get the note text (trimmed)
+    const noteText = notesTextarea ? notesTextarea.value.trim() : '';
+    console.log('Note text:', noteText);
+    console.log('Note length:', noteText.length);
+    
+    // Check if this note already exists
+    const isDuplicate = checkForDuplicateNote(noteText);
+    console.log('Is duplicate note?', isDuplicate);
+    
+    // Check if new note starts with an existing note (replacement scenario)
+    const replaceIndex = findNoteToReplace(noteText);
+    console.log('Replace index:', replaceIndex);
+    
+    // If we found a note to replace, remove it
+    if (replaceIndex !== -1 && noteText.length > 0) {
+        console.log('Removing old note at index', replaceIndex);
+        entries[replaceIndex].note = ''; // Clear the old note
+    }
+    
     // Add END entry BEFORE changing state
-    entries.push({
+    const endEntry = {
         type: 'END',
         timestamp: now,
         tasks: tasksArray
-    });
+    };
     
-    // Save to server with tasks
-    await saveEntry('END', now, tasksArray);
+    // Only add note if it's not empty and not a duplicate
+    if (noteText.length > 0 && !isDuplicate) {
+        endEntry.note = noteText;
+    }
+    
+    entries.push(endEntry);
+    
+    // Save to server with tasks and note
+    await saveEntry('END', now, tasksArray, noteText.length > 0 && !isDuplicate ? noteText : null);
     
     // Now update UI state
     isRunning = false;
@@ -385,99 +455,83 @@ function updateDisplay() {
 }
 
 function updateTimeline() {
-    // console.log('=== updateTimeline called ===');
-    // console.log('isRunning in updateTimeline:', isRunning);
-    // console.log('currentStartTime in updateTimeline:', currentStartTime);
-    
-    if (!timelineDiv) {
-        // console.error('timelineDiv is null!');
-        return;
-    }
-    
-    const sessions = [];
-    let currentStart = null;
-    let sessionNumber = 1;
-    
-    // Build sessions from entries
-    for (let i = 0; i < entries.length; i++) {
-        if (entries[i].type === 'START') {
-            currentStart = entries[i].timestamp;
-        } else if (entries[i].type === 'END' && currentStart) {
-            sessions.push({
-                number: sessionNumber++,
-                start: currentStart,
-                end: entries[i].timestamp,
-                duration: entries[i].timestamp - currentStart
-            });
-            currentStart = null;
-        }
-    }
-    
-    // console.log('Built sessions:', sessions);
-    // console.log('currentStart after building sessions:', currentStart);
-    
-    // Check if there's an active session (only when timer is running)
-    if (currentStart && isRunning) {
-        // console.log('Adding active session');
-        sessions.push({
-            number: sessionNumber,
-            start: currentStart,
-            end: null,
-            duration: new Date() - currentStart,
-            active: true
-        });
-    } else {
-        // console.log('NOT adding active session. currentStart:', currentStart, 'isRunning:', isRunning);
-    }
-    
-    if (sessions.length === 0) {
-        // console.log('No sessions to display');
-        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
-        return;
-    }
-    
-    // console.log('Rendering', sessions.length, 'sessions');
-    
-    // Display sessions in reverse order (most recent first)
-    timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
-        const startTime = session.start.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        });
-        
-        const endTime = session.end ? session.end.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-        }) : 'In Progress';
-        
-        const hours = Math.floor(session.duration / 3600000);
-        const minutes = Math.floor((session.duration % 3600000) / 60000);
-        const seconds = Math.floor((session.duration % 60000) / 1000);
-        const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        
-        return `
-            <div class="timeline-session ${session.active ? 'active' : ''}">
-                <div class="timeline-header">
-                    <span class="session-number">Session ${session.number}</span>
-                    <span class="session-duration">${durationStr}</span>
-                </div>
-                <div class="timeline-times">
-                    <div class="timeline-time">
-                        <span class="timeline-label start-label">Start:</span>
-                        <span>${startTime}</span>
-                    </div>
-                    <div class="timeline-time">
-                        <span class="timeline-label end-label">End:</span>
-                        <span>${endTime}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    // console.log('=== updateTimeline complete ===');
+    if (!timelineDiv) {
+        return;
+    }
+    
+    const sessions = [];
+    let currentStart = null;
+    let sessionNumber = 1;
+    
+    // Build sessions from entries
+    for (let i = 0; i < entries.length; i++) {
+        if (entries[i].type === 'START') {
+            currentStart = entries[i].timestamp;
+        } else if (entries[i].type === 'END' && currentStart) {
+            sessions.push({
+                number: sessionNumber++,
+                start: currentStart,
+                end: entries[i].timestamp,
+                duration: entries[i].timestamp - currentStart
+            });
+            currentStart = null;
+        }
+    }
+    
+    // Check if there's an active session (only when timer is running)
+    if (currentStart && isRunning) {
+        sessions.push({
+            number: sessionNumber,
+            start: currentStart,
+            end: null,
+            duration: new Date() - currentStart,
+            active: true
+        });
+    }
+    
+    if (sessions.length === 0) {
+        timelineDiv.innerHTML = '<p style="text-align: center; color: #9ca3af;">No sessions yet</p>';
+        return;
+    }
+    
+    // Display sessions in reverse order (most recent first)
+    timelineDiv.innerHTML = sessions.slice().reverse().map(session => {
+        const startTime = session.start.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+        const endTime = session.end ? session.end.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }) : 'In Progress';
+        
+        const hours = Math.floor(session.duration / 3600000);
+        const minutes = Math.floor((session.duration % 3600000) / 60000);
+        const seconds = Math.floor((session.duration % 60000) / 1000);
+        const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        
+        return `
+            <div class="timeline-session ${session.active ? 'active' : ''}">
+                <div class="timeline-header">
+                    <span class="session-number">Session ${session.number}</span>
+                    <span class="session-duration">${durationStr}</span>
+                </div>
+                <div class="timeline-times">
+                    <div class="timeline-time">
+                        <span class="timeline-label start-label">Start:</span>
+                        <span>${startTime}</span>
+                    </div>
+                    <div class="timeline-time">
+                        <span class="timeline-label end-label">End:</span>
+                        <span>${endTime}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }

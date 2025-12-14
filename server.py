@@ -108,6 +108,12 @@ def load_today():
                             print(f"Loaded END entry with tasks: {tasks}")
                         else:
                             print(f"Loaded END entry with NO tasks")
+                        
+                        # Also load the note if present
+                        note_value = row.get('Notes', '').strip()
+                        if note_value:
+                            entry['note'] = note_value
+                            print(f"Loaded END entry with note: {note_value}")
                     
                     print(f"Adding entry to list: {entry}")
                     entries.append(entry)
@@ -127,8 +133,9 @@ def save():
         entry_type = data['type']
         timestamp_str = data['timestamp']
         tasks = data.get('tasks', [])  # Get tasks array (for END entries)
+        note = data.get('note', '')  # Get note text (for END entries)
         
-        print(f"Received save request: type={entry_type}, tasks={tasks}")
+        print(f"Received save request: type={entry_type}, tasks={tasks}, note={note}")
         
         # Parse timestamp
         timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
@@ -138,8 +145,8 @@ def save():
         print(f"Saving to: {filename}")
         content = read_csv_from_file(filename)
         
-        # Define the new fieldnames with task columns (including Interview Ques.)
-        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work']
+        # Define the new fieldnames with task columns and Notes
+        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work', 'Notes']
         
         # Read existing rows
         rows = []
@@ -158,8 +165,16 @@ def save():
                         'Code Practice': row.get('Code Practice', ''),
                         'Interview Ques.': row.get('Interview Ques.', ''),
                         'Business Idea': row.get('Business Idea', ''),
-                        'Church Work': row.get('Church Work', '')
+                        'Church Work': row.get('Church Work', ''),
+                        'Notes': row.get('Notes', '')
                     }
+                    
+                    # If we have a note to save and this row's note matches the beginning of our new note,
+                    # clear this row's note (we're replacing it)
+                    if note and new_row['Notes'] and note.startswith(new_row['Notes']):
+                        print(f"Clearing old note: '{new_row['Notes']}' to be replaced by: '{note}'")
+                        new_row['Notes'] = ''
+                    
                     rows.append(new_row)
         
         # Prepare new row
@@ -172,7 +187,8 @@ def save():
             'Code Practice': '',
             'Interview Ques.': '',
             'Business Idea': '',
-            'Church Work': ''
+            'Church Work': '',
+            'Notes': ''
         }
         
         # If it's an END entry with tasks, mark the task columns with 'x'
@@ -185,6 +201,25 @@ def save():
                     print(f"✓ Marked task '{task}' with 'x' on END entry")
                 else:
                     print(f"✗ Task '{task}' not found in columns: {fieldnames}")
+        
+        # If it's an END entry with a note, add it
+        if entry_type == 'END' and note:
+            print(f"Note received: '{note}'")
+            # Check if this exact note already exists in any row
+            duplicate_found = False
+            for row in rows:
+                if row['Notes'] == note:
+                    duplicate_found = True
+                    print(f"Duplicate note found, not adding: '{note}'")
+                    break
+            
+            if not duplicate_found:
+                new_row['Notes'] = note
+                print(f"✓ Adding note to END entry: '{note}'")
+            else:
+                print(f"✗ Skipping duplicate note")
+        elif entry_type == 'END':
+            print(f"No note provided for END entry")
         
         rows.append(new_row)
         

@@ -395,6 +395,45 @@
             text-decoration: line-through;
             cursor: not-allowed;
         }
+        
+        .notes-panel {
+            margin-top: 12px;
+            padding-top: 15px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .notes-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .notes-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            color: #374151;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        .notes-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .notes-counter {
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: right;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -441,6 +480,18 @@
                     <div class="checklist-item">
                         <input type="checkbox" id="check-church" data-task="Church Work">
                         <label for="check-church">Church Work</label>
+                    </div>
+                </div>
+                
+                <div class="notes-panel">
+                    <label for="notesText" class="notes-label">Session Notes</label>
+                    <textarea 
+                        id="notesText" 
+                        class="notes-textarea" 
+                        maxlength="255" 
+                        placeholder="Add notes about this session (saved when you press End)..."></textarea>
+                    <div class="notes-counter">
+                        <span id="notesCounter">0</span>/255
                     </div>
                 </div>
             </div>
