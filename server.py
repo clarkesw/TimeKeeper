@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 
 app = Flask(__name__)
@@ -124,6 +124,164 @@ def load_today():
     result = {'entries': entries}
     print(f"About to return JSON: {result}")
     return jsonify(result)
+
+@app.route('/load_six_days')
+def load_six_days():
+    """Load time totals for the last 6 days"""
+    try:
+        today = datetime.now(EST).date()
+        filename = get_today_filename()
+        
+        print(f"\n{'='*60}")
+        print(f"Loading 6-day histogram")
+        print(f"Today's date: {today}")
+        print(f"Reading from file: {filename}")
+        print(f"{'='*60}")
+        
+        content = read_csv_from_file(filename)
+        
+        if not content:
+            print("ERROR: No content found in CSV file!")
+            return jsonify({'days': []})
+        
+        # Dictionary to store total time per day
+        day_totals = {}
+        
+        lines = content.strip().split('\n')
+        print(f"Total lines in CSV: {len(lines)}")
+        
+        if len(lines) <= 1:
+            print("ERROR: CSV only has header, no data!")
+            return jsonify({'days': []})
+        
+        reader = csv.DictReader(lines)
+        
+        # Track sessions per day
+        sessions_by_day = {}
+        all_dates_found = set()
+        
+        for idx, row in enumerate(reader):
+            entry_date_str = row.get('Date', '')
+            if not entry_date_str:
+                continue
+            
+            try:
+                entry_date = datetime.strptime(entry_date_str, '%Y-%m-%d').date()
+                date_key = entry_date.isoformat()
+                all_dates_found.add(date_key)
+                
+                if date_key not in sessions_by_day:
+                    sessions_by_day[date_key] = []
+                
+                entry_type = row.get('Type', '').strip()
+                
+                if entry_type == 'START':
+                    # Parse timestamp - handle both with and without timezone
+                    timestamp_str = row['Timestamp'].strip()
+                    try:
+                        # Try parsing with timezone info first
+                        if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
+                            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        else:
+                            # Parse as naive datetime and localize to EST
+                            if '.' in timestamp_str:
+                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+                            else:
+                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                            timestamp = EST.localize(timestamp)
+                    except Exception as e:
+                        print(f"Error parsing START timestamp '{timestamp_str}': {e}")
+                        continue
+                    
+                    sessions_by_day[date_key].append({
+                        'type': 'START',
+                        'timestamp': timestamp
+                    })
+                    
+                elif entry_type == 'END':
+                    # Parse timestamp - handle both with and without timezone
+                    timestamp_str = row['Timestamp'].strip()
+                    try:
+                        # Try parsing with timezone info first
+                        if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
+                            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        else:
+                            # Parse as naive datetime and localize to EST
+                            if '.' in timestamp_str:
+                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+                            else:
+                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                            timestamp = EST.localize(timestamp)
+                    except Exception as e:
+                        print(f"Error parsing END timestamp '{timestamp_str}': {e}")
+                        continue
+                    
+                    sessions_by_day[date_key].append({
+                        'type': 'END',
+                        'timestamp': timestamp
+                    })
+                    
+            except (ValueError, KeyError) as e:
+                print(f"Error parsing row {idx}: {e}, row: {row}")
+                continue
+        
+        print(f"\nAll dates found in CSV: {sorted(all_dates_found)}")
+        print(f"Dates with sessions: {sorted(sessions_by_day.keys())}")
+        
+        # Calculate totals for each day
+        for date_key, entries in sessions_by_day.items():
+            print(f"\n{'='*60}")
+            print(f"Calculating for {date_key}")
+            print(f"Total entries: {len(entries)}")
+            
+            total_ms = 0
+            current_start = None
+            session_num = 1
+            
+            for entry in entries:
+                if entry['type'] == 'START':
+                    current_start = entry['timestamp']
+                    print(f"  Session {session_num} START: {current_start}")
+                elif entry['type'] == 'END' and current_start:
+                    duration = (entry['timestamp'] - current_start).total_seconds() * 1000
+                    total_ms += duration
+                    print(f"  Session {session_num} END: {entry['timestamp']}")
+                    print(f"    Duration: {duration/1000/60:.1f} min | Running total: {total_ms/1000/60:.1f} min")
+                    current_start = None
+                    session_num += 1
+                elif entry['type'] == 'END' and not current_start:
+                    print(f"  WARNING: Found END without START at {entry['timestamp']}")
+            
+            print(f"Final total for {date_key}: {total_ms/1000/60:.1f} minutes ({total_ms/1000/3600:.2f} hours)")
+            day_totals[date_key] = total_ms
+        
+        # Get last 6 days
+        result = []
+        print(f"\n{'='*60}")
+        print("Building result for last 6 days:")
+        
+        for i in range(5, -1, -1):
+            date = today - timedelta(days=i)
+            date_key = date.isoformat()
+            total_ms = day_totals.get(date_key, 0)
+            
+            result.append({
+                'date': date_key,
+                'total_ms': total_ms,
+                'is_today': (date == today)
+            })
+            
+            print(f"  {date_key} ({'TODAY' if date == today else 'past'}): {total_ms/1000/3600:.2f} hours")
+        
+        print(f"{'='*60}\n")
+        
+        return jsonify({'days': result})
+        
+    except Exception as e:
+        print(f"ERROR in load_six_days: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'days': []}), 500
 
 @app.route('/save', methods=['POST'])
 def save():

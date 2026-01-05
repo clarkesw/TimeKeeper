@@ -434,6 +434,94 @@
             text-align: right;
             margin-top: 4px;
         }
+        
+        .histogram-panel {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .histogram-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .histogram {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 180px;
+            gap: 8px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .histogram-loading {
+            width: 100%;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+        
+        .histogram-bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        
+        .histogram-bar-wrapper {
+            width: 100%;
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        
+        .histogram-bar {
+            width: 100%;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 6px 6px 0 0;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 4px;
+        }
+        
+        .histogram-bar.today {
+            background: linear-gradient(to top, #10b981, #34d399);
+        }
+        
+        .histogram-bar.goal-met {
+            background: linear-gradient(to top, #f59e0b, #fbbf24);
+        }
+        
+        .histogram-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        
+        .histogram-label-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+            text-align: center;
+            word-break: break-word;
+        }
+        
+        .histogram-label-text.today {
+            color: #10b981;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -492,6 +580,13 @@
                         placeholder="Add notes about this session (saved when you press End)..."></textarea>
                     <div class="notes-counter">
                         <span id="notesCounter">0</span>/255
+                    </div>
+                </div>
+                
+                <div class="histogram-panel">
+                    <label class="histogram-label">Last 6 Days</label>
+                    <div class="histogram" id="histogram">
+                        <div class="histogram-loading">Loading...</div>
                     </div>
                 </div>
             </div>

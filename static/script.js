@@ -13,6 +13,7 @@ const currentSessionDiv = document.getElementById('currentSession');
 const thermometerFill = document.getElementById('thermometerFill');
 const goalProgress = document.getElementById('goalProgress');
 const notesTextarea = document.getElementById('notesText');
+const histogramDiv = document.getElementById('histogram');
 
 const GOAL_HOURS = 5;
 
@@ -168,7 +169,73 @@ async function loadTodayEntries() {
         console.error('Error loading today entries:', error);
         updateFavicon(false);
     }
+    
+    // Load histogram data
+    loadHistogram();
+    
     console.log('=== loadTodayEntries complete ===');
+}
+
+// Load and display 6-day histogram
+async function loadHistogram() {
+    try {
+        const response = await fetch('/load_six_days');
+        const data = await response.json();
+        
+        if (data.days && data.days.length > 0) {
+            renderHistogram(data.days);
+        } else {
+            histogramDiv.innerHTML = '<div class="histogram-loading">No data available</div>';
+        }
+    } catch (error) {
+        console.error('Error loading histogram:', error);
+        histogramDiv.innerHTML = '<div class="histogram-loading">Error loading data</div>';
+    }
+}
+
+function renderHistogram(days) {
+    console.log('=== Rendering histogram ===');
+    console.log('Days data:', days);
+    
+    const maxMs = Math.max(...days.map(d => d.total_ms), GOAL_HOURS * 3600000);
+    console.log('Max MS for scaling:', maxMs);
+    
+    histogramDiv.innerHTML = days.map(day => {
+        // Parse date correctly to avoid timezone issues
+        // Split the date string and create date in local timezone
+        const dateParts = day.date.split('-');
+        const date = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+        
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        const monthDay = date.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+        
+        const hours = day.total_ms / 3600000;
+        const heightPercent = (day.total_ms / maxMs) * 100;
+        
+        console.log(`Date: ${day.date}, Total MS: ${day.total_ms}, Hours: ${hours.toFixed(2)}, Height: ${heightPercent.toFixed(1)}%`);
+        
+        const isToday = day.is_today;
+        const metGoal = hours >= GOAL_HOURS;
+        
+        let barClass = 'histogram-bar';
+        if (isToday) {
+            barClass += ' today';
+        } else if (metGoal) {
+            barClass += ' goal-met';
+        }
+        
+        return `
+            <div class="histogram-bar-container">
+                <div class="histogram-bar-wrapper">
+                    <div class="histogram-value">${hours.toFixed(1)}h</div>
+                    <div class="${barClass}" style="height: ${Math.max(heightPercent, 3)}%"></div>
+                </div>
+                <div class="histogram-label-text ${isToday ? 'today' : ''}">${dayName}<br>${monthDay}</div>
+            </div>
+        `;
+    }).join('');
+    
+    console.log('=== Histogram rendered ===');
 }
 
 // Call on page load - wait for DOM to be ready
@@ -398,6 +465,9 @@ endBtn.addEventListener('click', async () => {
     
     // Update display to recalculate total time
     updateDisplay();
+    
+    // Reload histogram to show updated data
+    loadHistogram();
 });
 
 function updateDisplay() {
