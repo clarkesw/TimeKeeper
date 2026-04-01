@@ -179,7 +179,7 @@ async function loadTodayEntries() {
 // Load and display 6-day histogram
 async function loadHistogram() {
     try {
-        const response = await fetch('/load_six_days');
+        const response = await fetch('/load_seven_days');
         const data = await response.json();
         
         if (data.days && data.days.length > 0) {
@@ -379,6 +379,15 @@ startBtn.addEventListener('click', async () => {
     const now = new Date();
     currentStartTime = now;
     currentSessionTasks.clear(); // Clear tasks for new session
+
+    // Clear session notes for the new session
+    if (notesTextarea) {
+        notesTextarea.value = '';
+        const notesCounter = document.getElementById('notesCounter');
+        if (notesCounter) {
+            notesCounter.textContent = '0';
+        }
+    }
     
     entries.push({
         type: 'START',

@@ -14,6 +14,31 @@ def get_today_filename():
     month_year = today.strftime('%b_%Y')  # e.g., Dec_2025
     return f'/home/clarke/Dropbox/time_tracker_{month_year}.csv'
 
+def backup_previous_month_csv():
+    """Move last month's CSV to ~/Dropbox/TimeBackup/ if it exists and hasn't been backed up yet."""
+    try:
+        today = datetime.now(EST)
+        # Get the first day of this month, then subtract one day to get last month
+        first_of_month = today.replace(day=1)
+        last_month = first_of_month - timedelta(days=1)
+        month_year = last_month.strftime('%b_%Y')
+
+        src = f'/home/clarke/Dropbox/time_tracker_{month_year}.csv'
+        backup_dir = '/home/clarke/Dropbox/TimeBackup'
+        dst = os.path.join(backup_dir, f'time_tracker_{month_year}.csv')
+
+        if os.path.exists(src) and not os.path.exists(dst):
+            os.makedirs(backup_dir, exist_ok=True)
+            import shutil
+            shutil.move(src, dst)
+            print(f'Backed up {src} -> {dst}')
+        elif os.path.exists(dst):
+            print(f'Backup already exists for {month_year}, skipping.')
+        else:
+            print(f'No previous month CSV found at {src}, nothing to back up.')
+    except Exception as e:
+        print(f'Error during backup: {e}')
+
 def read_csv_from_file(filename):
     """Read CSV file from local filesystem"""
     try:
@@ -95,7 +120,7 @@ def load_today():
                     # For END entries, collect which tasks were marked
                     if row['Type'] == 'END':
                         tasks = []
-                        task_columns = ['Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work']
+                        task_columns = ['Paid Work', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work']
                         for task in task_columns:
                             task_value = row.get(task, '').strip()
                             print(f"  Checking task '{task}': value='{task_value}'")
@@ -125,107 +150,122 @@ def load_today():
     print(f"About to return JSON: {result}")
     return jsonify(result)
 
-@app.route('/load_six_days')
-def load_six_days():
-    """Load time totals for the last 6 days"""
+@app.route('/load_seven_days')
+def load_seven_days():
+    """Load time totals for the last 7 days, reading current and previous month CSVs as needed"""
     try:
         today = datetime.now(EST).date()
-        filename = get_today_filename()
         
         print(f"\n{'='*60}")
-        print(f"Loading 6-day histogram")
+        print(f"Loading 7-day histogram")
         print(f"Today's date: {today}")
-        print(f"Reading from file: {filename}")
         print(f"{'='*60}")
         
-        content = read_csv_from_file(filename)
+        # Build list of CSV files: previous month backup + current month
+        current_filename = get_today_filename()
+        first_of_month = datetime.now(EST).replace(day=1)
+        last_month = first_of_month - timedelta(days=1)
+        prev_month_year = last_month.strftime('%b_%Y')
+        prev_filename = f'/home/clarke/Dropbox/TimeBackup/time_tracker_{prev_month_year}.csv'
         
-        if not content:
-            print("ERROR: No content found in CSV file!")
-            return jsonify({'days': []})
+        filenames_to_read = []
+        if os.path.exists(prev_filename):
+            filenames_to_read.append(prev_filename)
+            print(f"Also reading previous month backup: {prev_filename}")
+        else:
+            print(f"No previous month backup found at {prev_filename}")
+        filenames_to_read.append(current_filename)
+        print(f"Reading current month file: {current_filename}")
         
         # Dictionary to store total time per day
         day_totals = {}
-        
-        lines = content.strip().split('\n')
-        print(f"Total lines in CSV: {len(lines)}")
-        
-        if len(lines) <= 1:
-            print("ERROR: CSV only has header, no data!")
-            return jsonify({'days': []})
-        
-        reader = csv.DictReader(lines)
         
         # Track sessions per day
         sessions_by_day = {}
         all_dates_found = set()
         
-        for idx, row in enumerate(reader):
-            entry_date_str = row.get('Date', '')
-            if not entry_date_str:
+        for filename in filenames_to_read:
+            content = read_csv_from_file(filename)
+            
+            if not content:
+                print(f"No content found in {filename}, skipping.")
                 continue
             
-            try:
-                entry_date = datetime.strptime(entry_date_str, '%Y-%m-%d').date()
-                date_key = entry_date.isoformat()
-                all_dates_found.add(date_key)
-                
-                if date_key not in sessions_by_day:
-                    sessions_by_day[date_key] = []
-                
-                entry_type = row.get('Type', '').strip()
-                
-                if entry_type == 'START':
-                    # Parse timestamp - handle both with and without timezone
-                    timestamp_str = row['Timestamp'].strip()
-                    try:
-                        # Try parsing with timezone info first
-                        if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
-                            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        else:
-                            # Parse as naive datetime and localize to EST
-                            if '.' in timestamp_str:
-                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
-                            else:
-                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
-                            timestamp = EST.localize(timestamp)
-                    except Exception as e:
-                        print(f"Error parsing START timestamp '{timestamp_str}': {e}")
-                        continue
-                    
-                    sessions_by_day[date_key].append({
-                        'type': 'START',
-                        'timestamp': timestamp
-                    })
-                    
-                elif entry_type == 'END':
-                    # Parse timestamp - handle both with and without timezone
-                    timestamp_str = row['Timestamp'].strip()
-                    try:
-                        # Try parsing with timezone info first
-                        if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
-                            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        else:
-                            # Parse as naive datetime and localize to EST
-                            if '.' in timestamp_str:
-                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
-                            else:
-                                timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
-                            timestamp = EST.localize(timestamp)
-                    except Exception as e:
-                        print(f"Error parsing END timestamp '{timestamp_str}': {e}")
-                        continue
-                    
-                    sessions_by_day[date_key].append({
-                        'type': 'END',
-                        'timestamp': timestamp
-                    })
-                    
-            except (ValueError, KeyError) as e:
-                print(f"Error parsing row {idx}: {e}, row: {row}")
+            lines = content.strip().split('\n')
+            print(f"Total lines in CSV: {len(lines)}")
+            
+            if len(lines) <= 1:
+                print(f"CSV only has header, no data in {filename}, skipping.")
                 continue
+            
+            reader = csv.DictReader(lines)
+            
+            for idx, row in enumerate(reader):
+                entry_date_str = row.get('Date', '')
+                if not entry_date_str:
+                    continue
+                
+                try:
+                    entry_date = datetime.strptime(entry_date_str, '%Y-%m-%d').date()
+                    date_key = entry_date.isoformat()
+                    all_dates_found.add(date_key)
+                    
+                    if date_key not in sessions_by_day:
+                        sessions_by_day[date_key] = []
+                    
+                    entry_type = row.get('Type', '').strip()
+                    
+                    if entry_type == 'START':
+                        # Parse timestamp - handle both with and without timezone
+                        timestamp_str = row['Timestamp'].strip()
+                        try:
+                            # Try parsing with timezone info first
+                            if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
+                                timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                            else:
+                                # Parse as naive datetime and localize to EST
+                                if '.' in timestamp_str:
+                                    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+                                else:
+                                    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                                timestamp = EST.localize(timestamp)
+                        except Exception as e:
+                            print(f"Error parsing START timestamp '{timestamp_str}': {e}")
+                            continue
+                        
+                        sessions_by_day[date_key].append({
+                            'type': 'START',
+                            'timestamp': timestamp
+                        })
+                        
+                    elif entry_type == 'END':
+                        # Parse timestamp - handle both with and without timezone
+                        timestamp_str = row['Timestamp'].strip()
+                        try:
+                            # Try parsing with timezone info first
+                            if timestamp_str.endswith('Z') or '+' in timestamp_str or '-' in timestamp_str[-6:]:
+                                timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                            else:
+                                # Parse as naive datetime and localize to EST
+                                if '.' in timestamp_str:
+                                    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S.%f')
+                                else:
+                                    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%dT%H:%M:%S')
+                                timestamp = EST.localize(timestamp)
+                        except Exception as e:
+                            print(f"Error parsing END timestamp '{timestamp_str}': {e}")
+                            continue
+                        
+                        sessions_by_day[date_key].append({
+                            'type': 'END',
+                            'timestamp': timestamp
+                        })
+                        
+                except (ValueError, KeyError) as e:
+                    print(f"Error parsing row {idx}: {e}, row: {row}")
+                    continue
         
-        print(f"\nAll dates found in CSV: {sorted(all_dates_found)}")
+        print(f"\nAll dates found in CSVs: {sorted(all_dates_found)}")
         print(f"Dates with sessions: {sorted(sessions_by_day.keys())}")
         
         # Calculate totals for each day
@@ -255,12 +295,12 @@ def load_six_days():
             print(f"Final total for {date_key}: {total_ms/1000/60:.1f} minutes ({total_ms/1000/3600:.2f} hours)")
             day_totals[date_key] = total_ms
         
-        # Get last 6 days
+        # Get last 7 days
         result = []
         print(f"\n{'='*60}")
-        print("Building result for last 6 days:")
+        print("Building result for last 7 days:")
         
-        for i in range(5, -1, -1):
+        for i in range(6, -1, -1):
             date = today - timedelta(days=i)
             date_key = date.isoformat()
             total_ms = day_totals.get(date_key, 0)
@@ -278,7 +318,7 @@ def load_six_days():
         return jsonify({'days': result})
         
     except Exception as e:
-        print(f"ERROR in load_six_days: {e}")
+        print(f"ERROR in load_seven_days: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'days': []}), 500
@@ -304,7 +344,7 @@ def save():
         content = read_csv_from_file(filename)
         
         # Define the new fieldnames with task columns and Notes
-        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work', 'Notes']
+        fieldnames = ['Type', 'Timestamp', 'Date', 'Time', 'Paid Work', 'Java Study', 'Code Practice', 'Interview Ques.', 'Business Idea', 'Church Work', 'Notes']
         
         # Read existing rows
         rows = []
@@ -319,6 +359,7 @@ def save():
                         'Timestamp': row.get('Timestamp', ''),
                         'Date': row.get('Date', ''),
                         'Time': row.get('Time', ''),
+                        'Paid Work': row.get('Paid Work', ''),
                         'Java Study': row.get('Java Study', ''),
                         'Code Practice': row.get('Code Practice', ''),
                         'Interview Ques.': row.get('Interview Ques.', ''),
@@ -341,6 +382,7 @@ def save():
             'Timestamp': timestamp_est.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3],  # EST time without Z
             'Date': timestamp_est.strftime('%Y-%m-%d'),
             'Time': timestamp_est.strftime('%H:%M:%S'),
+            'Paid Work': '',
             'Java Study': '',
             'Code Practice': '',
             'Interview Ques.': '',
@@ -405,4 +447,5 @@ def save():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
+    backup_previous_month_csv()
     app.run(debug=True)
