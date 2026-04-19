@@ -363,37 +363,86 @@
         .checklist {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
         
         .checklist-item {
             display: flex;
             align-items: center;
-            gap: 10px;
         }
         
-        .checklist-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
+        .task-btn {
+            display: flex;
+            align-items: center;
+            background: #f3f4f6;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px 14px;
             cursor: pointer;
-            accent-color: #667eea;
-        }
-        
-        .checklist-item input[type="checkbox"]:checked {
-            cursor: not-allowed;
-        }
-        
-        .checklist-item label {
-            font-size: 16px;
+            transition: all 0.2s;
+            font-size: 15px;
             color: #374151;
-            cursor: pointer;
-            user-select: none;
+            font-weight: 500;
+            font-family: inherit;
+            width: 100%;
+            text-align: left;
         }
         
-        .checklist-item input[type="checkbox"]:checked + label {
-            color: #9ca3af;
-            text-decoration: line-through;
+        .task-btn:hover:not(:disabled) {
+            background: #ede9fe;
+            border-color: #667eea;
+            color: #4f46e5;
+        }
+        
+        .task-btn.active {
+            background: #ede9fe;
+            border-color: #667eea;
+            color: #4f46e5;
+        }
+        
+        .task-btn:disabled {
+            opacity: 0.45;
             cursor: not-allowed;
+        }
+        
+        .task-btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+        
+        .task-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 5px;
+            border-radius: 11px;
+            background: #667eea;
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            margin-left: auto;
+            transition: background 0.2s;
+        }
+        
+        .task-badge.zero {
+            background: #d1d5db;
+        }
+        
+        .session-tasks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        .session-task-tag {
+            background: #ede9fe;
+            color: #4f46e5;
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 600;
         }
         
         .notes-panel {
@@ -550,28 +599,22 @@
                 <h2>Daily Goals</h2>
                 <div class="checklist" id="checklist">
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-paid" data-task="Paid Work">
-                        <label for="check-paid">Paid Work</label>
+                        <button class="task-btn" data-task="Paid Work" disabled>Paid Work <span class="task-badge zero">0</span></button>
                     </div>
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-java" data-task="Java Study">
-                        <label for="check-java">Java Study</label>
+                        <button class="task-btn" data-task="Java Study" disabled>Java Study <span class="task-badge zero">0</span></button>
                     </div>
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-code" data-task="Code Practice">
-                        <label for="check-code">Code Practice</label>
+                        <button class="task-btn" data-task="Code Practice" disabled>Code Practice <span class="task-badge zero">0</span></button>
                     </div>
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-interview" data-task="Interview Ques.">
-                        <label for="check-interview">Interview Ques.</label>
+                        <button class="task-btn" data-task="Interview Ques." disabled>Interview Ques. <span class="task-badge zero">0</span></button>
                     </div>
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-business" data-task="Business Idea">
-                        <label for="check-business">Business Idea</label>
+                        <button class="task-btn" data-task="Business Idea" disabled>Business Idea <span class="task-badge zero">0</span></button>
                     </div>
                     <div class="checklist-item">
-                        <input type="checkbox" id="check-church" data-task="Church Work">
-                        <label for="check-church">Church Work</label>
+                        <button class="task-btn" data-task="Church Work" disabled>Church Work <span class="task-badge zero">0</span></button>
                     </div>
                 </div>
                 

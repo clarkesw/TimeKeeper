@@ -2,7 +2,8 @@ let entries = [];
 let isRunning = false;
 let currentStartTime = null;
 let sessionInterval = null;
-let currentSessionTasks = new Set(); // Track tasks for current session
+let currentSessionTasks = new Set(); // Tasks marked during the current session
+let todayTaskCounts = {};            // Total press count per task across all saved sessions today
 
 const startBtn = document.getElementById('startBtn');
 const endBtn = document.getElementById('endBtn');
@@ -31,65 +32,62 @@ function updateFavicon(running) {
 
 // Function to load checklist states from entries
 function loadChecklistStates() {
-    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
-    
     console.log('=== Loading checklist states ===');
-    console.log('isRunning:', isRunning);
-    console.log('Total entries loaded:', entries.length);
     
-    // Find all tasks that have been completed today (from entries array which only contains today's data)
-    const completedTasks = new Set();
-    
+    // Tally how many sessions each task was completed in today
+    todayTaskCounts = {};
     entries.forEach(entry => {
-        if (entry.type === 'END' && entry.tasks && Array.isArray(entry.tasks)) {
-            entry.tasks.forEach(task => completedTasks.add(task));
-            console.log('Found END entry with tasks:', entry.tasks);
+        if (entry.type === 'END' && Array.isArray(entry.tasks)) {
+            entry.tasks.forEach(task => {
+                todayTaskCounts[task] = (todayTaskCounts[task] || 0) + 1;
+            });
         }
     });
+    console.log('Today task counts:', todayTaskCounts);
     
-    console.log('Completed tasks from today only:', Array.from(completedTasks));
+    // Update all badge displays
+    updateAllBadges();
     
-    // Update checkboxes based on completed tasks
-    checkboxes.forEach(checkbox => {
-        const task = checkbox.dataset.task;
-        const isCompleted = completedTasks.has(task);
-        
-        checkbox.checked = isCompleted;
-        
-        // If completed, permanently disable
-        // If not completed, enable only when timer is running
-        checkbox.disabled = isCompleted || !isRunning;
-        
-        console.log(`Task "${task}": completed=${isCompleted}, disabled=${checkbox.disabled}`);
-    });
+    // Enable/disable buttons based on timer state
+    updateCheckboxState(isRunning);
     
-    // Clear the notes textarea at the start of each new day
+    // Clear the notes textarea
     if (notesTextarea) {
         notesTextarea.value = '';
         const notesCounter = document.getElementById('notesCounter');
-        if (notesCounter) {
-            notesCounter.textContent = '0';
-        }
-        console.log('Cleared notes textarea for new day');
+        if (notesCounter) notesCounter.textContent = '0';
     }
     
     console.log('=== Checklist loading complete ===');
 }
 
-// Function to enable/disable checkboxes based on timer state
-function updateCheckboxState(enabled) {
-    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
-    checkboxes.forEach(checkbox => {
-        // Don't enable if already checked (permanently completed for the day)
-        if (checkbox.checked) {
-            checkbox.disabled = true;
-        } else {
-            checkbox.disabled = !enabled;
+// Update badge counts on all task buttons
+function updateAllBadges() {
+    const taskBtns = document.querySelectorAll('.task-btn');
+    taskBtns.forEach(btn => {
+        const task = btn.dataset.task;
+        const count = (todayTaskCounts[task] || 0) + (currentSessionTasks.has(task) ? 1 : 0);
+        const badge = btn.querySelector('.task-badge');
+        if (badge) {
+            badge.textContent = count;
+            badge.classList.toggle('zero', count === 0);
         }
-        
-        if (!enabled && !checkbox.checked) {
-            // Only reset unchecked items when timer stops
-            checkbox.checked = false;
+    });
+}
+
+// Function to enable/disable task buttons based on timer state
+function updateCheckboxState(enabled) {
+    const taskBtns = document.querySelectorAll('.task-btn');
+    taskBtns.forEach(btn => {
+        if (!enabled) {
+            btn.disabled = true;
+            btn.classList.remove('active');
+        } else {
+            // When enabling, only lock buttons already pressed this session
+            btn.disabled = currentSessionTasks.has(btn.dataset.task);
+            if (currentSessionTasks.has(btn.dataset.task)) {
+                btn.classList.add('active');
+            }
         }
     });
 }
@@ -245,23 +243,18 @@ if (document.readyState === 'loading') {
     loadTodayEntries();
 }
 
-// Add event listeners to checkboxes
+// Add event listeners to task buttons
 document.addEventListener('DOMContentLoaded', () => {
-    const checkboxes = document.querySelectorAll('.checklist-item input[type="checkbox"]');
+    const taskBtns = document.querySelectorAll('.task-btn');
     
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const task = e.target.dataset.task;
-            if (e.target.checked) {
-                currentSessionTasks.add(task);
-                console.log('Added task to session:', task);
-                // Once checked, immediately disable it
-                e.target.disabled = true;
-            } else {
-                // This shouldn't happen since we disable on check, but just in case
-                currentSessionTasks.delete(task);
-                console.log('Removed task from session:', task);
-            }
+    taskBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const task = btn.dataset.task;
+            currentSessionTasks.add(task);
+            btn.classList.add('active');
+            btn.disabled = true; // One press per session
+            updateAllBadges();
+            console.log('Marked task for session:', task);
             console.log('Current session tasks:', Array.from(currentSessionTasks));
         });
     });
@@ -457,12 +450,18 @@ endBtn.addEventListener('click', async () => {
     // Now update UI state
     isRunning = false;
     currentStartTime = null;
+    
+    // Merge session tasks into today's running totals before clearing
+    currentSessionTasks.forEach(task => {
+        todayTaskCounts[task] = (todayTaskCounts[task] || 0) + 1;
+    });
     currentSessionTasks.clear();
     startBtn.disabled = false;
     endBtn.disabled = true;
     
-    // Disable and reset checkboxes
+    // Disable buttons and update badges
     updateCheckboxState(false);
+    updateAllBadges();
     
     // Stop updating the session timer
     if (sessionInterval) {
@@ -542,7 +541,7 @@ function updateTimeline() {
     let currentStart = null;
     let sessionNumber = 1;
     
-    // Build sessions from entries
+    // Build sessions from entries, pairing START with the next END
     for (let i = 0; i < entries.length; i++) {
         if (entries[i].type === 'START') {
             currentStart = entries[i].timestamp;
@@ -551,7 +550,8 @@ function updateTimeline() {
                 number: sessionNumber++,
                 start: currentStart,
                 end: entries[i].timestamp,
-                duration: entries[i].timestamp - currentStart
+                duration: entries[i].timestamp - currentStart,
+                tasks: entries[i].tasks || []
             });
             currentStart = null;
         }
@@ -564,6 +564,7 @@ function updateTimeline() {
             start: currentStart,
             end: null,
             duration: new Date() - currentStart,
+            tasks: Array.from(currentSessionTasks),
             active: true
         });
     }
@@ -594,6 +595,10 @@ function updateTimeline() {
         const seconds = Math.floor((session.duration % 60000) / 1000);
         const durationStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         
+        const taskTags = session.tasks && session.tasks.length > 0
+            ? `<div class="session-tasks">${session.tasks.map(t => `<span class="session-task-tag">${t}</span>`).join('')}</div>`
+            : '';
+        
         return `
             <div class="timeline-session ${session.active ? 'active' : ''}">
                 <div class="timeline-header">
@@ -610,6 +615,7 @@ function updateTimeline() {
                         <span>${endTime}</span>
                     </div>
                 </div>
+                ${taskTags}
             </div>
         `;
     }).join('');
